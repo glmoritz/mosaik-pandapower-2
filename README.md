@@ -1,6 +1,14 @@
 This is an adapter for using the network calculation program [pandapower] in a
 [mosaik] simulation.
 
+This simulator is still work in progress. In particular, not every desirable
+attribute is implemented yet. If you have need for a particular entity or
+attribute, leave an [issue here].
+
+[pandapower]: https://www.pandapower.org
+[mosaik]: https://mosaik.offis.de
+[issue here]: https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2/-/issues
+
 ## Usage
 
 ### Setup
