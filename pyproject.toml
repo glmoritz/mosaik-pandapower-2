@@ -11,7 +11,7 @@ packages = [{ include = "mosaik_components" }]
 python = ">=3.9,<4"
 pandapower = "^2.13.1"
 mosaik-api-v3 = "^3.0.4"
-numba = "^0.57.1"
+numba = "^0.58.1"
 loguru = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
@@ -20,7 +20,6 @@ pytest = "^7.3.1"
 simbench = "^1.4.0"
 pytest-watch = "^4.2.0"
 mosaik = "^3.1.1"
-numba = "^0.57.1"
 sphinx = "^7.2.5"
 
 [tool.pyright]
