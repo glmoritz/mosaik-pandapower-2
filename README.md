@@ -28,30 +28,43 @@ Having created your `world`, you can then start an instance of the simulator via
 pp_sim = world.start("Pandapower")
 ```
 
-Finally, you can create the `Grid` entity using
+Finally, you can create the `Grid` entity. There are several ways of doing this:
 
-```python
-grid = pp_sim.Grid(source=source, params=params)
-```
+- If you have a pandapowerNet instance `net` in your scenario and the pandapower
+  simulator is running in the same Python instance, you can use that grid by
+  calling
+  
+  ```python
+  grid = pp_sim.Grid(net=net)
+  ```
+- If the grid is in a JSON file (in pandapower’s format), you can call
+  ```python
+  grid = pp_sim.Grid(json=path_to_json)
+  ```
+- Similarly, if the grid is in an Excel file,
+  ```python
+  grid = pp_sim.Grid(xlsx=path_to_xlsx)
+  ```
+- If you want to use one of the network creation functions in
+  `pandapower.networks`, you can specify
+  ```python
+  grid = pp_sim.Grid(network_function=function_name, params=params)
+  ```
+  where `function_name` is the name of the function as a string and `params`
+  is a dictionary that will be used as the keyword arguments to that function
+  (it will default to `{}` if not given).
+- Finally, if you want to use a simbench grid,
+  ```python
+  grid = pp_sim.Grid(simbench=simbench_id)
+  ```
 
-where `source` describes the source of the grid (and `params` is only used in
-one case below). Currently, the adapter supports four types of sources:
-
-- You can pass a pandapowerNet object directly. This only works if the adapter
-  is running in the same process as the scenario, i.e. if it has been started
-  using the `"python"` method.
-- You can give the name of a grid file in JSON or Excel format (as supported by
-  pandapower).
-- You can give the name of a function in the module `pandapower.networks`
-  that returns a net. You can specify arguments to that function via the param
-  `params`.
-- You can give the name of a simbench case, provided that simbench is installed
-  (for the Python instance running the adapter).
+In every case, you will get a `Grid` entity `grid`. The simulator supports only
+one such entity. In case that you want to simulate several grids, you need to
+start several instances of the simulator. (Design note: Requiring multiple grids
+should be rare; restricting to one of them shortens the entity IDs of the
+children as we don’t need to track to which grid they belong.)
 
 ### Identifying grid elements
-
-The simulator only supports a single `Grid` entity. In case that you want to
-simulate several grids, you need to start several instances of the simulator.
 
 The `Grid` entity `grid` will have a child entity for each supported element
 present in the grid. You can access them via `grid.children`. You can filter for

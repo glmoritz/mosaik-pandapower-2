@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import mosaik_api_v3
 import pandas as pd
@@ -64,11 +64,11 @@ class Simulator(mosaik_api_v3.Simulator):
         else:
             raise ValueError(f"no entities for the model {model} can be created")
 
-    def create_grid(self, source: str, params: Dict[str, Any] = {}) -> CreateResult:
+    def create_grid(self, **params: Any) -> CreateResult:
         if self._net:
             raise ValueError("Grid was already created")
 
-        self._net, self._profiles = load_grid(source, params)
+        self._net, self._profiles = load_grid(params)
 
         child_entities: List[CreateResultChild] = []
         for child_model, info in MODEL_TO_ELEMENT_INFO.items():
@@ -194,7 +194,7 @@ class ModelElementInfo:
     """
     createable: bool = False
     """Whether this element can be created by the user."""
-    params: List[str] = []
+    params: List[str] = field(default_factory=list)
     """The mosaik params that may be given when creating this element.
     (Only sensible if ``createable=True``.)
     """
@@ -306,7 +306,7 @@ META: Meta = {
     "models": {
         "Grid": {
             "public": True,
-            "params": ["source", "params"],
+            "params": ["json", "xlsx", "net", "simbench", "network_function", "params"],
             "attrs": [],
             "any_inputs": False,
             "persistent": [],
@@ -329,63 +329,65 @@ def apply_profiles(net: pp.pandapowerNet, profiles: Any, step: int):
         net[elm].loc[:, param].update(series.loc[step])  # type: ignore
 
 
-def load_grid(source: Any, params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
+def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
     """Load a grid and the associated element profiles (if any).
 
-    :param source: This can be:
+    :param params: A dictionary describing which grid to load. It should
+        contain one of the following keys (or key combinations).
 
-        - a pandapower net object
-        - the file name of a grid in JSON or Excel format
-        - the name of a function in pandapower.networks
-        - a simbench ID (if simbench is installed)
-
-    :param params: The parameters to pass to the pandapower.networks
-        function. (For the other source types, this does nothing.)
+        - `"net"` where the corresponding value is a pandapowerNet
+        - `"json"` where the value is the name of a JSON file in
+          pandapower JSON format
+        - `"xlsx"` where the value is the name of an Excel file
+        - `"network_function"` giving the name of a function in
+          pandapower.networks. In this case, the additional key
+          `"params"` may be given to specify the kwargs to that function 
+        - `"simbench"` giving a simbench ID (if simbench is installed)
 
     :return: a tuple consisting of a :class:`pandapowerNet` and "element
         profiles" in the form that is returned by simbench's
         get_absolute_values function (or ``None`` if the loaded grid
         is not a simbench grid).
+
+    :raises ValueError: if multiple keys are given in `params`
     """
+    found_sources: Set[str] = set()
+    result: Optional[Tuple[pp.pandapowerNet, Any]] = None
+
     # Accept a pandapower grid
-    if isinstance(source, pp.pandapowerNet):
-        return (source, None)
-
-    # Accept .json and .xlsx files
-    try:
-        _, ext = os.path.splitext(source)
-        if ext == ".json":
-            return (pp.from_json(source), None)  # type: ignore
-        elif ext == ".xlsx":
-            return (pp.from_excel(source), None)  # type: ignore
+    if net := params.get("net", None):
+        if isinstance(net, pp.pandapowerNet):
+            result = (net, None)
+            found_sources.add("net")
         else:
-            # File ending does not indicate accepted file type.
-            # Try the next option
-            pass
-    except UserWarning:
-        # This exception is thrown by pandapower if file does not exist.
-        # Try the next option
-        pass
+            raise ValueError("net is not a pandapowerNet instance")
 
-    # Try to load a default network
-    try:
-        return (getattr(pandapower.networks, source)(**params), None)
-    except AttributeError:
-        # The supplied network name is not the name of a function from
-        # pandapower.networks.
-        # Try the next option
-        pass
+    if json_path := params.get("json", None):
+        result = (pp.from_json(json_path), None)
+        found_sources.add("json")
 
-    # Try simbench
-    try:
+    if xlsx_path := params.get("xlsx", None):
+        result = (pp.from_excel(xlsx_path), None)
+        found_sources.add("xlsx")
+
+    if network_function := params.get("network_function", None):
+        result = (
+            getattr(pandapower.networks, network_function)(**params.get("params", {})),
+            None,
+        )
+        found_sources.add("network_function")
+
+    if simbench_id := params.get("simbench", None):
         import simbench as sb
 
-        net = sb.get_simbench_net(source)
+        net = sb.get_simbench_net(simbench_id)
         profiles = sb.get_absolute_values(net, profiles_instead_of_study_cases=True)
-        return (net, profiles)
-    except (ImportError, ValueError):
+        result = (net, profiles)
+        found_sources.add("simbench")
+
+    if len(found_sources) != 1 or not result:
         raise ValueError(
-            f"Could not load requested grid '{source}'. Did you spell the name "
-            "correctly? If you're trying to load a simbench grid: Is simbench "
-            "installed?"
+            f"too many or too few sources specified for grid, namely: {found_sources}"
         )
+
+    return result
