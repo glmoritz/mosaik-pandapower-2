@@ -1,15 +1,23 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-import sys
-from loguru import logger
-import mosaik_api_v3
-from mosaik_api_v3.types import CreateResult, CreateResultChild, Meta, ModelDescription, OutputData, OutputRequest
 import os
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+
+import mosaik_api_v3
+import pandas as pd
+from loguru import logger
+from mosaik_api_v3.types import (
+    CreateResult,
+    CreateResultChild,
+    Meta,
+    ModelDescription,
+    OutputData,
+    OutputRequest,
+)
+
 import pandapower as pp
 import pandapower.networks
-import pandas as pd
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 
 # For META, see below. (Non-conventional order do appease the type
@@ -19,6 +27,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 class Simulator(mosaik_api_v3.Simulator):
     _sid: str
     """This simulator's ID."""
+    _step_size: int
     _net: pp.pandapowerNet
     """The pandapowerNet for this simulator."""
     bus_auto_elements: pd.DataFrame
@@ -36,8 +45,9 @@ class Simulator(mosaik_api_v3.Simulator):
         self._net = None  # type: ignore  # set in init()
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
 
-    def init(self, sid: str, time_resolution: float):
+    def init(self, sid: str, time_resolution: float, step_size: int = 900):
         self._sid = sid
+        self._step_size = step_size
         return self.meta
 
     def create(self, num: int, model: str, **model_params: Any) -> List[CreateResult]:
@@ -48,16 +58,13 @@ class Simulator(mosaik_api_v3.Simulator):
 
         if not self._net:
             raise ValueError(f"cannot create {model} entities before creating Grid")
-        
+
         if model == "ControlledGen":
-            return [
-                self.create_controlled_gen(**model_params)
-                for _ in range(num)
-            ]
+            return [self.create_controlled_gen(**model_params) for _ in range(num)]
         else:
             raise ValueError(f"no entities for the model {model} can be created")
 
-    def create_grid(self, source: str, params: Dict[str, Any]={}) -> CreateResult:
+    def create_grid(self, source: str, params: Dict[str, Any] = {}) -> CreateResult:
         if self._net:
             raise ValueError("Grid was already created")
 
@@ -83,17 +90,19 @@ class Simulator(mosaik_api_v3.Simulator):
             "children": child_entities,
             "rel": [],
         }
-    
+
     def create_controlled_gen(self, bus: int) -> CreateResult:
         idx = pp.create_gen(self._net, bus, p_mw=0.0)
         return {
             "type": "ControlledGen",
             "eid": f"ControlledGen-${idx}",
             "children": [],
-            "rel": [],
+            "rel": [f"Bus-{bus}"],
         }
 
     def setup_done(self):
+        # Create "secret" loads and sgens that are used when the user
+        # provides real and reactive power directly to grid nodes.
         load_indices = pp.create_loads(self._net, self._net.bus.index, 0.0)
         sgen_indices = pp.create_sgens(self._net, self._net.bus.index, 0.0)
         self.bus_auto_elements = pd.DataFrame(
@@ -123,25 +132,24 @@ class Simulator(mosaik_api_v3.Simulator):
                 ] = attr_info.aggregator(values.values())
 
         pp.runpp(self._net)
-        return time + 1
+        return time + self._step_size
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
-        return {
-            eid: self.get_entity_attrs(eid, attrs)
-            for eid, attrs in outputs.items()
-        }
+        return {eid: self.get_entity_data(eid, attrs) for eid, attrs in outputs.items()}
 
-    def get_entity_attrs(self, eid: str, attrs: List[str]) -> Dict[str, Any]:
+    def get_entity_data(self, eid: str, attrs: List[str]) -> Dict[str, Any]:
         model, idx = self.get_model_and_idx(eid)
         info = MODEL_TO_ELEMENT_INFO[model]
         elem_table = self._net[f"res_{info.elem}"]
-        return {attr: elem_table.at[idx, info.out_attrs[attr]] for attr in attrs}
+        return {
+            attr: elem_table.at[idx, info.out_attr_to_column[attr]] for attr in attrs
+        }
 
 
 @dataclass
 class InAttrInfo:
-    """Specificaction of an input attribute of a model.
-    """
+    """Specificaction of an input attribute of a model."""
+
     column: str
     """The name of the column in the target element's dataframe
     corresponding to this attribute.
@@ -151,7 +159,7 @@ class InAttrInfo:
     inputs are written. (This might not be the element type
     corresponding to the model to support connecting loads and sgens
     directly to the buses.)
-    If None, use the element corresponding to the model.
+    If ``None``, use the element corresponding to the model.
     """
     idx_fn: Callable[[int, Simulator], int] = lambda idx, sim: idx
     """A function to transform the entity ID's index part into the
@@ -165,6 +173,10 @@ class InAttrInfo:
 
 @dataclass
 class ModelElementInfo:
+    """Specification of the pandapower element that is represented by
+    a (mosaik) model of this simulator.
+    """
+
     elem: str
     """The name of the pandapower element corresponding to this model.
     """
@@ -176,9 +188,15 @@ class ModelElementInfo:
     """Mapping each input attr to the corresponding column in the
     element's dataframe and an aggregation function.
     """
-    out_attrs: Dict[str, str]
+    out_attr_to_column: Dict[str, str]
     """Mapping each output attr to the corresponding column in the
     element's result dataframe.
+    """
+    createable: bool = False
+    """Whether this element can be created by the user."""
+    params: List[str] = []
+    """The mosaik params that may be given when creating this element.
+    (Only sensible if ``createable=True``.)
     """
 
 
@@ -208,7 +226,7 @@ MODEL_TO_ELEMENT_INFO = {
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "load"],
             ),
         },
-        out_attrs={
+        out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mw",
             "Vm[pu]": "vm_pu",
@@ -219,7 +237,7 @@ MODEL_TO_ELEMENT_INFO = {
         elem="load",
         connected_buses=["bus"],
         in_attrs={},
-        out_attrs={
+        out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
@@ -228,7 +246,7 @@ MODEL_TO_ELEMENT_INFO = {
         elem="sgen",
         connected_buses=["bus"],
         in_attrs={},
-        out_attrs={
+        out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
@@ -237,18 +255,30 @@ MODEL_TO_ELEMENT_INFO = {
         elem="gen",
         connected_buses=["bus"],
         in_attrs={},
-        out_attrs={
+        out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
             "Va[deg]": "va_degree",
             "Vm[pu]": "vm_pu",
         },
     ),
+    "ControlledGen": ModelElementInfo(
+        elem="gen",
+        connected_buses=["bus"],
+        in_attrs={
+            "P[MW]": InAttrInfo(
+                column="p_mw",
+            )
+        },
+        out_attr_to_column={},
+        createable=True,
+        params=["bus"],
+    ),
     "Line": ModelElementInfo(
         elem="line",
         connected_buses=["from_bus", "to_bus"],
         in_attrs={},
-        out_attrs={
+        out_attr_to_column={
             "I[kA]": "i_ka",
             "loading[%]": "loading_percent",
         },
@@ -259,9 +289,9 @@ MODEL_TO_ELEMENT_INFO = {
 # Generate mosaik model descriptions out of the MODEL_TO_ELEMENT_INFO
 ELEM_META_MODELS: Dict[str, ModelDescription] = {
     model: {
-        "public": False,
-        "params": [],
-        "attrs": list(info.in_attrs.keys()) + list(info.out_attrs.keys()),
+        "public": info.createable,
+        "params": info.params,
+        "attrs": list(info.in_attrs.keys()) + list(info.out_attr_to_column.keys()),
         "any_inputs": False,
         "persistent": [],
         "trigger": [],
@@ -277,14 +307,6 @@ META: Meta = {
         "Grid": {
             "public": True,
             "params": ["source", "params"],
-            "attrs": [],
-            "any_inputs": False,
-            "persistent": [],
-            "trigger": [],
-        },
-        "ControlledGen": {
-            "public": True,
-            "params": ["bus"],
             "attrs": [],
             "any_inputs": False,
             "persistent": [],
@@ -316,7 +338,7 @@ def load_grid(source: Any, params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, An
         - the file name of a grid in JSON or Excel format
         - the name of a function in pandapower.networks
         - a simbench ID (if simbench is installed)
-    
+
     :param params: The parameters to pass to the pandapower.networks
         function. (For the other source types, this does nothing.)
 
@@ -333,9 +355,9 @@ def load_grid(source: Any, params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, An
     try:
         _, ext = os.path.splitext(source)
         if ext == ".json":
-            return (pp.from_json(source), None)
+            return (pp.from_json(source), None)  # type: ignore
         elif ext == ".xlsx":
-            return (pp.from_excel(source), None)
+            return (pp.from_excel(source), None)  # type: ignore
         else:
             # File ending does not indicate accepted file type.
             # Try the next option

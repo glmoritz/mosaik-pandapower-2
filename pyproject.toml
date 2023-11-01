@@ -5,13 +5,14 @@ description = "An adapter to connect mosaik to pandapower"
 authors = ["Eike <eike.schulte@offis.de>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "mosaik_components"}]
+packages = [{ include = "mosaik_components" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
 pandapower = "^2.13.1"
 mosaik-api-v3 = "^3.0.4"
 numba = "^0.57.1"
+loguru = "^0.7.2"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.3.0"
@@ -23,7 +24,13 @@ numba = "^0.57.1"
 sphinx = "^7.2.5"
 
 [tool.pyright]
+typeCheckingMode = "strict"
 reportMissingTypeStubs = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownMemberType = false
+reportUnknownParameterType = false
+reportUnknownVariableType = false
 
 [build-system]
 requires = ["poetry-core"]
