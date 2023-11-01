@@ -121,7 +121,8 @@ class Simulator(mosaik_api_v3.Simulator):
 
     def step(self, time, inputs, max_advance):
         if self._profiles:
-            apply_profiles(self._net, self._profiles, time)
+            # TODO: Division by 900 here assumes a time_resolution of 1.
+            apply_profiles(self._net, self._profiles, time // 900)
         for eid, data in inputs.items():
             model, idx = self.get_model_and_idx(eid)
             info = MODEL_TO_ELEMENT_INFO[model]
