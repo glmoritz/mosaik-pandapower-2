@@ -95,7 +95,7 @@ class Simulator(mosaik_api_v3.Simulator):
         idx = pp.create_gen(self._net, bus, p_mw=0.0)
         return {
             "type": "ControlledGen",
-            "eid": f"ControlledGen-${idx}",
+            "eid": f"ControlledGen-{idx}",
             "children": [],
             "rel": [f"Bus-{bus}"],
         }
