@@ -27,7 +27,10 @@ import pandapower.networks
 class Simulator(mosaik_api_v3.Simulator):
     _sid: str
     """This simulator's ID."""
-    _step_size: int
+    _step_size: Optional[int]
+    """The step size for this simulator. If ``None``, the simulator
+    is running in event-based mode, instead.
+    """
     _net: pp.pandapowerNet
     """The pandapowerNet for this simulator."""
     bus_auto_elements: pd.DataFrame
@@ -45,8 +48,10 @@ class Simulator(mosaik_api_v3.Simulator):
         self._net = None  # type: ignore  # set in init()
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
 
-    def init(self, sid: str, time_resolution: float, step_size: int = 900):
+    def init(self, sid: str, time_resolution: float, step_size: Optional[int] = None):
         self._sid = sid
+        if not step_size:
+            self.meta["type"] = "event-based"
         self._step_size = step_size
         return self.meta
 
@@ -133,7 +138,8 @@ class Simulator(mosaik_api_v3.Simulator):
                 ] = attr_info.aggregator(values.values())
 
         pp.runpp(self._net)
-        return time + self._step_size
+        if self._step_size:
+            return time + self._step_size
 
     def get_data(self, outputs: OutputRequest) -> OutputData:
         return {eid: self.get_entity_data(eid, attrs) for eid, attrs in outputs.items()}

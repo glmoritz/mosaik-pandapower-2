@@ -25,8 +25,12 @@ SIM_CONFIG = {
 Having created your `world`, you can then start an instance of the simulator via
 
 ```python
-pp_sim = world.start("Pandapower")
+pp_sim = world.start("Pandapower", step_size=900)
 ```
+
+The `step_size` specifies at which steps this simulator runs. If you don’t give
+a step size or set it to `None`, the simulator will run in event-based mode,
+i.e. whenever it receives new input.
 
 Finally, you can create the `Grid` entity. There are several ways of doing this:
 
