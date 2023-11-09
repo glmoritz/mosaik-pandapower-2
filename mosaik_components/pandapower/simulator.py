@@ -235,7 +235,7 @@ MODEL_TO_ELEMENT_INFO = {
         },
         out_attr_to_column={
             "P[MW]": "p_mw",
-            "Q[MVar]": "q_mw",
+            "Q[MVar]": "q_mvar",
             "Vm[pu]": "vm_pu",
             "Va[deg]": "va_degree",
         },
