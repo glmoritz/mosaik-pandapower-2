@@ -237,7 +237,7 @@ MODEL_TO_ELEMENT_INFO = {
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mw",
             "Vm[pu]": "vm_pu",
-            "Va[deg]": "va_deg",
+            "Va[deg]": "va_degree",
         },
     ),
     "Load": ModelElementInfo(
