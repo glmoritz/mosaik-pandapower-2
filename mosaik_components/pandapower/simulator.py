@@ -269,6 +269,15 @@ MODEL_TO_ELEMENT_INFO = {
             "Vm[pu]": "vm_pu",
         },
     ),
+    "ExternalGrid": ModelElementInfo(
+        elem="ext_grid",
+        connected_buses=["bus"],
+        in_attrs={},
+        out_attr_to_column={
+            "P[MW]": "p_mw",
+            "Q[MVar]": "q_mvar",
+        }
+    ),
     "ControlledGen": ModelElementInfo(
         elem="gen",
         connected_buses=["bus"],
