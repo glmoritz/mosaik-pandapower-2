@@ -1,3 +1,5 @@
+# mosaik-pandapower-2
+
 This is an adapter for using the network calculation program [pandapower] in a
 [mosaik] simulation.
 
@@ -10,6 +12,18 @@ attribute, leave an [issue here].
 [issue here]: https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2/-/issues
 
 ## Usage
+
+### Installation
+
+Currently, this package is not on PyPI, so you need to install it from this git
+repository directly.
+
+This simulator supports simbench grids. If you want to use them, you need to
+install the simbench package from PyPI.
+
+pandapower can be sped up by also installing numba. As this can be tricky on
+some systems (and not strictly necessary), it is not listed as an explicit
+dependency.
 
 ### Setup
 
