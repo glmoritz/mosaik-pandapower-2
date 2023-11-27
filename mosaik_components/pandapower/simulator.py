@@ -75,7 +75,7 @@ class Simulator(mosaik_api_v3.Simulator):
 
         self._net, self._profiles = load_grid(params)
 
-        child_entities: List[CreateResultChild] = []
+        child_entities: List[CreateResult] = []
         for child_model, info in MODEL_TO_ELEMENT_INFO.items():
             for elem_tuple in self._net[info.elem].itertuples():
                 child_entities.append(
@@ -398,6 +398,11 @@ def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
 
         net = sb.get_simbench_net(simbench_id)
         profiles = sb.get_absolute_values(net, profiles_instead_of_study_cases=True)
+        profiles = {
+            (elm, col): df
+            for (elm, col), df in profiles.items()
+            if not net[elm].empty
+        }
         result = (net, profiles)
         found_sources.add("simbench")
 
