@@ -15,8 +15,7 @@ attribute, leave an [issue here].
 
 ### Installation
 
-Currently, this package is not on PyPI, so you need to install it from this git
-repository directly.
+This package can be installed from PyPI as `mosaik-pandapower-2`.
 
 This simulator supports simbench grids. If you want to use them, you need to
 install the simbench package from PyPI.
