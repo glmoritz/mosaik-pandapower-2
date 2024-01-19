@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
 
@@ -9,7 +8,6 @@ import pandas as pd
 from loguru import logger
 from mosaik_api_v3.types import (
     CreateResult,
-    CreateResultChild,
     Meta,
     ModelDescription,
     OutputData,
@@ -18,7 +16,6 @@ from mosaik_api_v3.types import (
 
 import pandapower as pp
 import pandapower.networks
-
 
 # For META, see below. (Non-conventional order do appease the type
 # checker.)
@@ -48,7 +45,7 @@ class Simulator(mosaik_api_v3.Simulator):
         self._net = None  # type: ignore  # set in init()
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
 
-    def init(self, sid: str, time_resolution: float, step_size: Optional[int] = None):
+    def init(self, sid: str, time_resolution: float, step_size: Optional[int] = 900):
         self._sid = sid
         if not step_size:
             self.meta["type"] = "event-based"
@@ -76,16 +73,21 @@ class Simulator(mosaik_api_v3.Simulator):
         self._net, self._profiles = load_grid(params)
 
         child_entities: List[CreateResult] = []
-        for child_model, info in MODEL_TO_ELEMENT_INFO.items():
-            for elem_tuple in self._net[info.elem].itertuples():
+        for child_model, spec in MODEL_TO_ELEMENT_SPECS.items():
+            for elem_tuple in self._net[spec.elem].itertuples():
                 child_entities.append(
                     {
                         "type": child_model,
                         "eid": f"{child_model}-{elem_tuple.Index}",
                         "rel": [
                             f"Bus-{getattr(elem_tuple, bus)}"
-                            for bus in info.connected_buses
+                            for bus in spec.connected_buses
                         ],
+                        "extra_info": {
+                            "name": elem_tuple.name,
+                            "index": elem_tuple.Index,
+                            **spec.get_extra_info(elem_tuple, self._net),
+                        },
                     }
                 )
 
@@ -130,12 +132,12 @@ class Simulator(mosaik_api_v3.Simulator):
             apply_profiles(self._net, self._profiles, time // 900)
         for eid, data in inputs.items():
             model, idx = self.get_model_and_idx(eid)
-            info = MODEL_TO_ELEMENT_INFO[model]
+            spec = MODEL_TO_ELEMENT_SPECS[model]
             for attr, values in data.items():
-                attr_info = info.in_attrs[attr]
-                self._net[attr_info.target_elem or info.elem].at[
-                    attr_info.idx_fn(idx, self), attr_info.column
-                ] = attr_info.aggregator(values.values())
+                attr_spec = spec.input_attr_specs[attr]
+                self._net[attr_spec.target_elem or spec.elem].at[
+                    attr_spec.idx_fn(idx, self), attr_spec.column
+                ] = attr_spec.aggregator(values.values())
 
         pp.runpp(self._net)
         if self._step_size:
@@ -146,7 +148,7 @@ class Simulator(mosaik_api_v3.Simulator):
 
     def get_entity_data(self, eid: str, attrs: List[str]) -> Dict[str, Any]:
         model, idx = self.get_model_and_idx(eid)
-        info = MODEL_TO_ELEMENT_INFO[model]
+        info = MODEL_TO_ELEMENT_SPECS[model]
         elem_table = self._net[f"res_{info.elem}"]
         return {
             attr: elem_table.at[idx, info.out_attr_to_column[attr]] for attr in attrs
@@ -154,7 +156,7 @@ class Simulator(mosaik_api_v3.Simulator):
 
 
 @dataclass
-class InAttrInfo:
+class InputAttrSpec:
     """Specificaction of an input attribute of a model."""
 
     column: str
@@ -168,7 +170,7 @@ class InAttrInfo:
     directly to the buses.)
     If ``None``, use the element corresponding to the model.
     """
-    idx_fn: Callable[[int, Simulator], int] = lambda idx, sim: idx
+    idx_fn: Callable[[int, Simulator], int] = lambda idx, sim: idx  # noqa: E731
     """A function to transform the entity ID's index part into the
     index for the target_df.
     """
@@ -179,7 +181,7 @@ class InAttrInfo:
 
 
 @dataclass
-class ModelElementInfo:
+class ModelToElementSpec:
     """Specification of the pandapower element that is represented by
     a (mosaik) model of this simulator.
     """
@@ -191,7 +193,7 @@ class ModelElementInfo:
     """The names of the columns specifying the buses to which this
     element is connected.
     """
-    in_attrs: Dict[str, InAttrInfo]
+    input_attr_specs: Dict[str, InputAttrSpec]
     """Mapping each input attr to the corresponding column in the
     element's dataframe and an aggregation function.
     """
@@ -205,29 +207,32 @@ class ModelElementInfo:
     """The mosaik params that may be given when creating this element.
     (Only sensible if ``createable=True``.)
     """
+    get_extra_info: Callable[[Any, pp.pandapowerNet], Dict[str, Any]] = (
+        lambda net, idx: {}
+    )  # noqa: E731
 
 
-MODEL_TO_ELEMENT_INFO = {
-    "Bus": ModelElementInfo(
+MODEL_TO_ELEMENT_SPECS = {
+    "Bus": ModelToElementSpec(
         elem="bus",
         connected_buses=[],
-        in_attrs={
-            "P_gen[MW]": InAttrInfo(
+        input_attr_specs={
+            "P_gen[MW]": InputAttrSpec(
                 column="p_mw",
                 target_elem="sgen",
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "sgen"],
             ),
-            "P_load[MW]": InAttrInfo(
+            "P_load[MW]": InputAttrSpec(
                 column="p_mw",
                 target_elem="load",
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "load"],
             ),
-            "Q_gen[MVar]": InAttrInfo(
+            "Q_gen[MVar]": InputAttrSpec(
                 column="q_mvar",
                 target_elem="sgen",
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "sgen"],
             ),
-            "Q_load[MVar]": InAttrInfo(
+            "Q_load[MVar]": InputAttrSpec(
                 column="q_mvar",
                 target_elem="load",
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "load"],
@@ -239,50 +244,68 @@ MODEL_TO_ELEMENT_INFO = {
             "Vm[pu]": "vm_pu",
             "Va[deg]": "va_degree",
         },
+        get_extra_info=lambda elem_tuple, net: {
+            "nominal voltage [kV]": elem_tuple.vn_kv,
+        },
     ),
-    "Load": ModelElementInfo(
+    "Load": ModelToElementSpec(
         elem="load",
         connected_buses=["bus"],
-        in_attrs={},
+        input_attr_specs={},
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
+        get_extra_info=lambda elem_tuple, net: {
+            "profile": elem_tuple.profile,
+        }
+        if "profile" in elem_tuple._fields
+        else {},
     ),
-    "StaticGen": ModelElementInfo(
+    "StaticGen": ModelToElementSpec(
         elem="sgen",
         connected_buses=["bus"],
-        in_attrs={},
+        input_attr_specs={},
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
+        get_extra_info=lambda elem_tuple, net: {
+            "profile": elem_tuple.profile,
+        }
+        if "profile" in elem_tuple._fields
+        else {},
     ),
-    "Gen": ModelElementInfo(
+    "Gen": ModelToElementSpec(
         elem="gen",
         connected_buses=["bus"],
-        in_attrs={},
+        input_attr_specs={},
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
             "Va[deg]": "va_degree",
             "Vm[pu]": "vm_pu",
         },
+        get_extra_info=lambda elem_tuple, net: {
+            "profile": elem_tuple.profile,
+        }
+        if "profile" in elem_tuple._fields
+        else {},
     ),
-    "ExternalGrid": ModelElementInfo(
+    "ExternalGrid": ModelToElementSpec(
         elem="ext_grid",
         connected_buses=["bus"],
-        in_attrs={},
+        input_attr_specs={},
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
-        }
+        },
     ),
-    "ControlledGen": ModelElementInfo(
+    "ControlledGen": ModelToElementSpec(
         elem="gen",
         connected_buses=["bus"],
-        in_attrs={
-            "P[MW]": InAttrInfo(
+        input_attr_specs={
+            "P[MW]": InputAttrSpec(
                 column="p_mw",
             )
         },
@@ -290,10 +313,10 @@ MODEL_TO_ELEMENT_INFO = {
         createable=True,
         params=["bus"],
     ),
-    "Line": ModelElementInfo(
+    "Line": ModelToElementSpec(
         elem="line",
         connected_buses=["from_bus", "to_bus"],
-        in_attrs={},
+        input_attr_specs={},
         out_attr_to_column={
             "I[kA]": "i_ka",
             "loading[%]": "loading_percent",
@@ -307,12 +330,13 @@ ELEM_META_MODELS: Dict[str, ModelDescription] = {
     model: {
         "public": info.createable,
         "params": info.params,
-        "attrs": list(info.in_attrs.keys()) + list(info.out_attr_to_column.keys()),
+        "attrs": list(info.input_attr_specs.keys())
+        + list(info.out_attr_to_column.keys()),
         "any_inputs": False,
         "persistent": [],
         "trigger": [],
     }
-    for model, info in MODEL_TO_ELEMENT_INFO.items()
+    for model, info in MODEL_TO_ELEMENT_SPECS.items()
 }
 
 
@@ -357,7 +381,7 @@ def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
         - `"xlsx"` where the value is the name of an Excel file
         - `"network_function"` giving the name of a function in
           pandapower.networks. In this case, the additional key
-          `"params"` may be given to specify the kwargs to that function 
+          `"params"` may be given to specify the kwargs to that function
         - `"simbench"` giving a simbench ID (if simbench is installed)
 
     :return: a tuple consisting of a :class:`pandapowerNet` and "element
@@ -398,10 +422,11 @@ def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
 
         net = sb.get_simbench_net(simbench_id)
         profiles = sb.get_absolute_values(net, profiles_instead_of_study_cases=True)
+        # Remove profile keys for element types that don't exist in the
+        # grid. (The corresponding profiles will be empty, which would
+        # result in indexing errors in `apply_profiles` later.)
         profiles = {
-            (elm, col): df
-            for (elm, col), df in profiles.items()
-            if not net[elm].empty
+            (elm, col): df for (elm, col), df in profiles.items() if not net[elm].empty
         }
         result = (net, profiles)
         found_sources.add("simbench")

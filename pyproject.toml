@@ -9,7 +9,6 @@ packages = [{ include = "mosaik_components" }]
 
 [tool.poetry.dependencies]
 python = ">=3.9,<4"
-pandapower = "^2.13.1"
 mosaik-api-v3 = "^3.0.4"
 loguru = "^0.7.2"
 
@@ -20,6 +19,13 @@ simbench = "^1.4.0"
 pytest-watch = "^4.2.0"
 mosaik = "^3.1.1"
 sphinx = "^7.2.5"
+numba = "^0.58.1"
+
+[tool.poetry.group.jupyter.dependencies]
+plotly = "^5.18.0"
+matplotlib = "^3.8.2"
+nbformat = "^5.9.2"
+ipykernel = "^6.27.1"
 
 [tool.pyright]
 typeCheckingMode = "strict"

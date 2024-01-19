@@ -25,7 +25,7 @@ def test_scenario(world):
         network_function="create_cigre_network_mv", params={"with_der": False}
     )
     asserter = world.start("Asserter").Entity(
-        expected={0: {"P[MW]": [-45.045731794074804]}}
+        expected={0: {"P[MW]": [-45.0457317940754]}}
     )
 
     world.connect(grid.children[0], asserter, "P[MW]")

@@ -11,6 +11,7 @@ attribute, leave an [issue here].
 [mosaik]: https://mosaik.offis.de
 [issue here]: https://gitlab.com/mosaik/components/energy/mosaik-pandapower-2/-/issues
 
+
 ## Usage
 
 ### Installation
@@ -41,9 +42,9 @@ Having created your `world`, you can then start an instance of the simulator via
 pp_sim = world.start("Pandapower", step_size=900)
 ```
 
-The `step_size` specifies at which steps this simulator runs. If you don’t give
-a step size or set it to `None`, the simulator will run in event-based mode,
-i.e. whenever it receives new input.
+The `step_size` specifies at which steps this simulator runs. (The default is
+`step_size=900`.) If you set `step_size` to `None`, the simulator will run in
+event-based mode, i.e. it will step whenever it receives new input.
 
 Finally, you can create the `Grid` entity. There are several ways of doing this:
 
@@ -81,6 +82,7 @@ start several instances of the simulator. (Design note: Requiring multiple grids
 should be rare; restricting to one of them shortens the entity IDs of the
 children as we don’t need to track to which grid they belong.)
 
+
 ### Identifying grid elements
 
 The `Grid` entity `grid` will have a child entity for each supported element
@@ -90,6 +92,7 @@ specific types of entities by checking the child entity's `type` attribute.
 The entity IDs of the children follow the format `ElementType-Index` where
 `ElementType` is the same as the `type` and `Index` is the element's index
 in the element's table in the `pandapowerNet` object.
+
 
 ### Connecting other simulators to the grid
 
@@ -114,9 +117,13 @@ gen = pp_sim.ControlledGen(bus=bus_index)
 where `bus_index` is the index of the bus where the generator should be
 connected. Then, you can connect your simulator to the `gen` entity.
 
+
 ### Table of entity types and their attributes
 
-| Entity type   | Attribute      | In/Out | Description                                            |
+The following table describes the model that this simulator supports, the
+attributes of these models, and whether they’re used as inputs or outputs.
+
+| Model         | Attribute      | In/Out | Description                                            |
 |---------------|----------------|--------|--------------------------------------------------------|
 | Grid          |                |        | **meta entity representing the entire grid**           |
 | Bus           |                |        | **a bus in the grid**                                  |
