@@ -48,21 +48,30 @@ event-based mode, i.e. it will step whenever it receives new input.
 
 Finally, you can create the `Grid` entity. There are several ways of doing this:
 
-- If you have a pandapowerNet instance `net` in your scenario and the pandapower
-  simulator is running in the same Python instance, you can use that grid by
-  calling
+- If you have a `pandapowerNet` instance `net` in your scenario and the
+  pandapower simulator is running in the same Python instance, you can use that
+  grid by calling
   
   ```python
   grid = pp_sim.Grid(net=net)
   ```
+
+  Note that the intended use for this is that you set up the grid using
+  pandapower's functions and then pass the `pandapowerNet` to the adapter. The
+  adapter does not expect the supplied net to be changed by anything (but
+  itself) afterwards. If you continue to tinker with the grid, your results may
+  be incorrect.
+  
 - If the grid is in a JSON file (in pandapower’s format), you can call
   ```python
   grid = pp_sim.Grid(json=path_to_json)
   ```
+  
 - Similarly, if the grid is in an Excel file,
   ```python
   grid = pp_sim.Grid(xlsx=path_to_xlsx)
   ```
+  
 - If you want to use one of the network creation functions in
   `pandapower.networks`, you can specify
   ```python
@@ -71,10 +80,15 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
   where `function_name` is the name of the function as a string and `params`
   is a dictionary that will be used as the keyword arguments to that function
   (it will default to `{}` if not given).
+  
 - Finally, if you want to use a simbench grid,
   ```python
   grid = pp_sim.Grid(simbench=simbench_id)
   ```
+  This method requires simbench to be installed in the same (virtual)
+  environment as the adapter. This does not happen automatically when installing
+  mosaik-pandapower-2, as we don't want to burden users who don't need it with
+  this dependency.
 
 In every case, you will get a `Grid` entity `grid`. The simulator supports only
 one such entity. In case that you want to simulate several grids, you need to
