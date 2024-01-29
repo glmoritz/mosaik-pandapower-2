@@ -42,9 +42,7 @@ def test_scenario_2(world):
     constsim = world.start("Const")
     const = constsim.Const(value=3)
     world.connect(const, grid.children[1], ("value", "P_gen[MW]"))
-    # world.connect(const, grid.children[2], ("value", "P_MW_load"))
     world.run(until=1)
-    # assert 0 == 1
 
 
 def test_inexistent_file(world: World):

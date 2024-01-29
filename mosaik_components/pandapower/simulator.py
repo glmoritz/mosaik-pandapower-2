@@ -368,7 +368,7 @@ META: Meta = {
         },
         **ELEM_META_MODELS,
     },
-    "extra_methods": [],
+    "extra_methods": ["get_extra_info"],
 }
 
 
