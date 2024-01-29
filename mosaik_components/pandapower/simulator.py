@@ -8,6 +8,7 @@ import pandas as pd
 from loguru import logger
 from mosaik_api_v3.types import (
     CreateResult,
+    EntityId,
     Meta,
     ModelDescription,
     OutputData,
@@ -40,10 +41,17 @@ class Simulator(mosaik_api_v3.Simulator):
     load and sgen in the load and sgen element tables.
     """
 
+    _extra_info: Dict[EntityId, Any]
+    """Storage of the entity's extra_info for use in the
+    `get_extra_info` extra_method. This should be removed once
+    mosaik 3.3 (or later) is available more widely.
+    """
+
     def __init__(self):
         super().__init__(META)
         self._net = None  # type: ignore  # set in init()
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
+        self._extra_info = {}
 
     def init(self, sid: str, time_resolution: float, step_size: Optional[int] = 900):
         self._sid = sid
@@ -75,21 +83,24 @@ class Simulator(mosaik_api_v3.Simulator):
         child_entities: List[CreateResult] = []
         for child_model, spec in MODEL_TO_ELEMENT_SPECS.items():
             for elem_tuple in self._net[spec.elem].itertuples():
+                eid = f"{child_model}-{elem_tuple.Index}"
+                extra_info = {
+                    "name": elem_tuple.name,
+                    "index": elem_tuple.Index,
+                    **spec.get_extra_info(elem_tuple, self._net),
+                }
                 child_entities.append(
                     {
                         "type": child_model,
-                        "eid": f"{child_model}-{elem_tuple.Index}",
+                        "eid": eid,
                         "rel": [
                             f"Bus-{getattr(elem_tuple, bus)}"
                             for bus in spec.connected_buses
                         ],
-                        "extra_info": {
-                            "name": elem_tuple.name,
-                            "index": elem_tuple.Index,
-                            **spec.get_extra_info(elem_tuple, self._net),
-                        },
+                        "extra_info": extra_info,
                     }
                 )
+                self._extra_info[eid] = extra_info
 
         return {
             "eid": "Grid",
@@ -97,6 +108,9 @@ class Simulator(mosaik_api_v3.Simulator):
             "children": child_entities,
             "rel": [],
         }
+
+    def get_extra_info(self) -> Dict[EntityId, Any]:
+        return self._extra_info
 
     def create_controlled_gen(self, bus: int) -> CreateResult:
         idx = pp.create_gen(self._net, bus, p_mw=0.0)
