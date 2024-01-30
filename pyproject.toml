@@ -1,31 +1,54 @@
-[tool.poetry]
+[project]
 name = "mosaik-pandapower-2"
-version = "0.3.1"
 description = "An adapter to connect mosaik to pandapower"
-authors = ["Eike <eike.schulte@offis.de>"]
+authors = [
+  { name = "Eike Schulte", email = "eike.schulte@offis.de" },
+]
 license = "MIT"
 readme = "README.md"
 packages = [{ include = "mosaik_components" }]
+requires-python = ">=3.9"
+dependencies = [
+  "mosaik-api-v3 ~= 3.0.4",
+  "loguru ~= 0.7.2",
+]
+dynamic = ["version"]
 
-[tool.poetry.dependencies]
-python = ">=3.9,<4"
-mosaik-api-v3 = "^3.0.4"
-loguru = "^0.7.2"
+[project.optional-dependencies]
+simbench = [
+  "simbench ~= 1.4.0",
+]
+numba = [
+  "numba ~= 0.58.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-black = "^23.3.0"
-pytest = "^7.3.1"
-simbench = "^1.4.0"
-pytest-watch = "^4.2.0"
-mosaik = "^3.1.1"
-sphinx = "^7.2.5"
-numba = "^0.58.1"
+[tool.hatch.build.targets.wheel]
+packages = ["src/mosaik_components"]
 
-[tool.poetry.group.jupyter.dependencies]
-plotly = "^5.18.0"
-matplotlib = "^3.8.2"
-nbformat = "^5.9.2"
-ipykernel = "^6.27.1"
+[tool.hatch.envs.default]
+features = [
+  "simbench",
+  "numba",
+]
+dependencies = [
+  "mosaik ~= 3.1.1",
+  "black ~= 23.3.0",
+  "pytest ~= 7.3.1",
+  "pytest-watch ~= 4.2.0",
+]
+
+[tool.hatch.envs.docs]
+dependencies = [
+  "sphinx ~= 7.2.5",
+]
+
+[tool.hatch.envs.jupyter]
+dependencies = [
+  "plotly = ~= 5.18.0",
+  "matplotlib = ~= 3.8.2",
+  "nbformat = ~= 5.9.2",
+  "ipykernel = ~= 6.27.1",
+]
 
 [tool.pyright]
 typeCheckingMode = "strict"
@@ -36,6 +59,9 @@ reportUnknownMemberType = false
 reportUnknownParameterType = false
 reportUnknownVariableType = false
 
+[tool.hatch.version]
+source = "vcs"
+
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
