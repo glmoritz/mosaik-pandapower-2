@@ -347,8 +347,6 @@ ELEM_META_MODELS: Dict[str, ModelDescription] = {
         "attrs": list(info.input_attr_specs.keys())
         + list(info.out_attr_to_column.keys()),
         "any_inputs": False,
-        "persistent": [],
-        "trigger": [],
     }
     for model, info in MODEL_TO_ELEMENT_SPECS.items()
 }
@@ -363,8 +361,6 @@ META: Meta = {
             "params": ["json", "xlsx", "net", "simbench", "network_function", "params"],
             "attrs": [],
             "any_inputs": False,
-            "persistent": [],
-            "trigger": [],
         },
         **ELEM_META_MODELS,
     },
