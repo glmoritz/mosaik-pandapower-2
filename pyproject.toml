@@ -45,7 +45,7 @@ dependencies = [
 test = "pytest {args:tests}"
 
 [[tool.hatch.envs.test.matrix]]
-python = ["3.9", "3.12"]
+python = ["3.9", "3.11"]
 mosaik-beta = ["mosaik-stable", "mosaik-beta"]
 
 [tool.hatch.envs.test.overrides]
