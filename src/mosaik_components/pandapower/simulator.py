@@ -35,7 +35,7 @@ class Simulator(mosaik_api_v3.Simulator):
     """A dataframe listing the automatically generated loads and sgens
     to support connecting entities from other simulators directly to
     grid nodes.
-    
+
     The index of this dataframe corresponds to the bus index. The two
     columns "load" and "sgen" contain the index of the corresponding
     load and sgen in the load and sgen element tables.

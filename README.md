@@ -51,7 +51,7 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
 - If you have a `pandapowerNet` instance `net` in your scenario and the
   pandapower simulator is running in the same Python instance, you can use that
   grid by calling
-  
+
   ```python
   grid = pp_sim.Grid(net=net)
   ```
@@ -61,17 +61,17 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
   adapter does not expect the supplied net to be changed by anything (but
   itself) afterwards. If you continue to tinker with the grid, your results may
   be incorrect.
-  
+
 - If the grid is in a JSON file (in pandapower’s format), you can call
   ```python
   grid = pp_sim.Grid(json=path_to_json)
   ```
-  
+
 - Similarly, if the grid is in an Excel file,
   ```python
   grid = pp_sim.Grid(xlsx=path_to_xlsx)
   ```
-  
+
 - If you want to use one of the network creation functions in
   `pandapower.networks`, you can specify
   ```python
@@ -80,7 +80,7 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
   where `function_name` is the name of the function as a string and `params`
   is a dictionary that will be used as the keyword arguments to that function
   (it will default to `{}` if not given).
-  
+
 - Finally, if you want to use a simbench grid,
   ```python
   grid = pp_sim.Grid(simbench=simbench_id)
@@ -180,4 +180,3 @@ attributes of these models, and whether they’re used as inputs or outputs.
 | Line          |                |        | **a line in the grid**                                 |
 |               | `I[kA]`        | Out    | the current along the line                             |
 |               | `loading[%]`   | Out    | the loading of the line                                |
-

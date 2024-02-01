@@ -1,0 +1,21 @@
+repos:
+  - repo: local
+    hooks:
+      - id: test
+        name: Run test suite
+        language: system
+        entry: hatch run test:test
+        types: [python]
+        pass_filenames: false
+        verbose: true
+        stages: [pre-push]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+default_install_hook_types:
+  - pre-commit
+  - pre-push
