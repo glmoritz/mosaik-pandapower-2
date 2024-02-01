@@ -12,8 +12,8 @@ def world():
     return World(
         {
             "Grid": {"python": "mosaik_components.pandapower:Simulator"},
-            "Asserter": {"python": "tests.assert_simulator:AssertSimulator"},
-            "Const": {"python": "tests.const_simulator:ConstSimulator"},
+            "Asserter": {"python": "assert_simulator:AssertSimulator"},
+            "Const": {"python": "const_simulator:ConstSimulator"},
         }
     )
 
