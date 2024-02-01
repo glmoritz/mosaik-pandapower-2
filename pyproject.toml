@@ -45,6 +45,7 @@ dependencies = [
 test = "pytest {args:tests}"
 
 [[tool.hatch.envs.test.matrix]]
+python = ["3.9", "3.12"]
 mosaik-beta = ["mosaik-stable", "mosaik-beta"]
 
 [tool.hatch.envs.test.overrides]
@@ -79,6 +80,23 @@ filterwarnings = [
   "ignore:The behavior of DataFrame concatenation:FutureWarning",
   "ignore:Downcasting object:FutureWarning",
 ]
+
+[tool.ruff]
+line-length = 88
+indent-width = 4
+target-version = "py39"
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+docstring-code-line-length = 72
+
+[tool.ruff.lint]
+ignore = ["TRY", "EM"]  # maybe reconsider
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["INP001"]
+"tests/**/*" = ["S101", "T201"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
