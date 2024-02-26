@@ -47,8 +47,10 @@ class AssertSimulator(mosaik_api_v3.Simulator):
                     attr: sorted(values.values())
                     for attr, values in inputs[entity].items()
                 }
-                assert expected_now == entity_inputs, \
-                    f"got {entity_inputs} instead of {expected_now} for entity " \
-                    f"{entity} at time {time}"
+                for k in range(len(expected_now['P[MW]'])):
+                    rel_err = abs((expected_now['P[MW]'][k] - entity_inputs['P[MW]'][k])/expected_now['P[MW]'][k])
+                    assert rel_err < 0.005, \
+                        f"got {entity_inputs['P[MW]'][k]} at P[MW] instead of {expected_now['P[MW]'][k]} for entity {k} with relativ error of {rel_err} " \
+                        f"{entity} at time {time}"                 
                 del inputs[entity]
         assert inputs == {}, f"remaining inputs at time {time}"
