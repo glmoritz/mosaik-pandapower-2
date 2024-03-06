@@ -45,6 +45,7 @@ dependencies = [
 test = "pytest {args:tests}"
 
 [[tool.hatch.envs.test.matrix]]
+# Remember to also change .gitlab-ci.yml if you change the Python versions here
 python = ["3.9", "3.11"]
 mosaik-beta = ["mosaik-stable", "mosaik-beta"]
 
