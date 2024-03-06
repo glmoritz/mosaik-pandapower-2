@@ -39,18 +39,18 @@ class AssertSimulator(mosaik_api_v3.Simulator):
     def step(self, time, inputs, max_advance):
         for entity, expected in self.entities.items():
             if time in expected:
-                expected_now = {
-                    attr: sorted(values)
-                    for attr, values in expected[time].items()
-                }
-                entity_inputs = {
-                    attr: sorted(values.values())
-                    for attr, values in inputs[entity].items()
-                }
-                for k in range(len(expected_now['P[MW]'])):
-                    rel_err = abs((expected_now['P[MW]'][k] - entity_inputs['P[MW]'][k])/expected_now['P[MW]'][k])
-                    assert rel_err < 0.005, \
-                        f"got {entity_inputs['P[MW]'][k]} at P[MW] instead of {expected_now['P[MW]'][k]} for entity {k} with relativ error of {rel_err} " \
-                        f"{entity} at time {time}"                 
-                del inputs[entity]
-        assert inputs == {}, f"remaining inputs at time {time}"
+                entity_inputs = inputs.pop(entity)
+                for attr, values in expected[time].items():
+                    expected_values = sorted(values)
+                    received_values = sorted(entity_inputs.pop(attr).values())
+                    for ev, rv in zip(expected_values, received_values, strict=True):
+                        rel_err = abs((ev - rv) / ev)
+                        assert rel_err < 0.005, (
+                            f"at time {time} on port {entity}.{attr}, got {rv} instead "
+                            f"of {ev} for (relative error of {rel_err})"
+                        )
+                assert entity_inputs == {}, (
+                    f"remaining entity inputs for entity {entity} at time {time}: "
+                    f"{entity_inputs}"
+                )
+        assert inputs == {}, f"remaining inputs at time {time}: {inputs}"
