@@ -1,18 +1,22 @@
-image: python:3.10
+image: dmanthing/multi-python:latest
 
 stages:
-    -   release
+  - test
+  - release
 
-.install-poetry: &install-hatch
-  before_script:
-    - pip install hatch
-    - echo $MOSAIK_PYPI_USER
+before_script:
+  - pip install hatch
+
+test-job:
+  stage: test
+  script:
+    - hatch run test:test -x
 
 release-job:
-  <<: *install-hatch
   script:
     - hatch build -t wheel
-    - hatch publish -r test -u $MOSAIK_PYPI_USER -a $MOSAIK_TEST_PYPI_TOKEN
+    - echo $MOSAIK_PYPI_USER
+    - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
   stage: release
   only:
     - tags
