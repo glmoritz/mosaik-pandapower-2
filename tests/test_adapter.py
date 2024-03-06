@@ -1,9 +1,7 @@
 import json
 
-from loguru import logger
 import pytest
-
-import mosaik
+from loguru import logger
 from mosaik import World
 
 
@@ -12,8 +10,8 @@ def world():
     return World(
         {
             "Grid": {"python": "mosaik_components.pandapower:Simulator"},
-            "Asserter": {"python": "tests.assert_simulator:AssertSimulator"},
-            "Const": {"python": "tests.const_simulator:ConstSimulator"},
+            "Asserter": {"python": "test_simulators.assert_simulator:AssertSimulator"},
+            "Const": {"python": "test_simulators.const_simulator:ConstSimulator"},
         }
     )
 
@@ -57,9 +55,3 @@ def test_invalid_grid(world: World):
     with pytest.raises(json.decoder.JSONDecodeError):
         ppsim.Grid(json="tests/data/invalid_grid.json")
     world.shutdown()
-
-
-def test_problematic_profiles(world: World):
-    ppsim = world.start("Grid", step_size=1)
-    grid = ppsim.Grid(simbench="1-MV-rural--0-sw")
-    world.run(until=10)

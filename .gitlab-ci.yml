@@ -1,25 +1,29 @@
-image: python:3.10
+image: python:3.11
 
 stages:
-    -   release
+  - test
+  - release
 
-.install-poetry: &install-poetry
-  before_script:
-    - curl -sSL https://install.python-poetry.org | python3 -
-    - export PATH="/root/.local/bin:$PATH"
-    - poetry config repositories.pypi https://upload.pypi.org/legacy/
-    - echo $MOSAIK_PYPI_USER
-    - poetry config pypi-token.pypi $MOSAIK_PYPI_PASSWORD
+before_script:
+  - pip install hatch
+
+test-3-11-job:
+  image: python:3.11
+  stage: test
+  script:
+    - hatch run +py=3.11 test:test -x
+
+test-3-9-job:
+  image: python:3.9
+  stage: test
+  script:
+    - hatch run +py=3.9 test:test -x
 
 release-job:
-  <<: *install-poetry
-  artifacts:
-    paths:
-      - dist/*.whl
   script:
-    - poetry build
-    - poetry publish
+    - hatch build -t wheel
+    - echo $MOSAIK_PYPI_USER
+    - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
   stage: release
   only:
     - tags
-  when: manual

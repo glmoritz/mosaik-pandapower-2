@@ -51,7 +51,7 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
 - If you have a `pandapowerNet` instance `net` in your scenario and the
   pandapower simulator is running in the same Python instance, you can use that
   grid by calling
-  
+
   ```python
   grid = pp_sim.Grid(net=net)
   ```
@@ -61,17 +61,17 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
   adapter does not expect the supplied net to be changed by anything (but
   itself) afterwards. If you continue to tinker with the grid, your results may
   be incorrect.
-  
+
 - If the grid is in a JSON file (in pandapower’s format), you can call
   ```python
   grid = pp_sim.Grid(json=path_to_json)
   ```
-  
+
 - Similarly, if the grid is in an Excel file,
   ```python
   grid = pp_sim.Grid(xlsx=path_to_xlsx)
   ```
-  
+
 - If you want to use one of the network creation functions in
   `pandapower.networks`, you can specify
   ```python
@@ -80,7 +80,7 @@ Finally, you can create the `Grid` entity. There are several ways of doing this:
   where `function_name` is the name of the function as a string and `params`
   is a dictionary that will be used as the keyword arguments to that function
   (it will default to `{}` if not given).
-  
+
 - Finally, if you want to use a simbench grid,
   ```python
   grid = pp_sim.Grid(simbench=simbench_id)
@@ -181,3 +181,22 @@ attributes of these models, and whether they’re used as inputs or outputs.
 |               | `I[kA]`        | Out    | the current along the line                             |
 |               | `loading[%]`   | Out    | the loading of the line                                |
 
+
+## Development
+
+For the development of this simulator, the following tools are employed:
+
+-   [Hatch](https://hatch.pypa.io/latest/) is used as a packaging manager.
+    This offers the following commands:
+
+    -   `hatch fmt` to format the code (using ruff)
+    -   `hatch run test:test` to run pytest in a test matrix consisting of Python versions 3.9 and 3.11 and mosaik versions 3.2 and 3.3.0b1.
+    -   `hatch run python` for running Python.
+    -   `hatch run` to run arbitrary commands in the managed virtualenv.
+
+    Also, we use `hatch-vcs` to automatically deduce version numbers from git tags.
+    Adding a new tag starting with v on the main branch should automatically release this on PyPI.
+
+
+-   [pre-commit](https://pre-commit.com/) is used to run hooks before committing and pushing.
+    Install pre-commit (I recommend `pipx`) and install the hooks using `pre-commit install`.

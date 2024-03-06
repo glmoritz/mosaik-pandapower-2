@@ -1,22 +1,28 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Callable
 
 import mosaik_api_v3
 import pandas as pd
-from loguru import logger
-from mosaik_api_v3.types import (
-    CreateResult,
-    EntityId,
-    Meta,
-    ModelDescription,
-    OutputData,
-    OutputRequest,
-)
+from typing_extensions import override
 
 import pandapower as pp
 import pandapower.networks
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from mosaik_api_v3.types import (
+        CreateResult,
+        EntityId,
+        InputData,
+        Meta,
+        ModelDescription,
+        OutputData,
+        OutputRequest,
+        Time,
+    )
 
 # For META, see below. (Non-conventional order do appease the type
 # checker.)
@@ -25,7 +31,7 @@ import pandapower.networks
 class Simulator(mosaik_api_v3.Simulator):
     _sid: str
     """This simulator's ID."""
-    _step_size: Optional[int]
+    _step_size: int | None
     """The step size for this simulator. If ``None``, the simulator
     is running in event-based mode, instead.
     """
@@ -35,13 +41,13 @@ class Simulator(mosaik_api_v3.Simulator):
     """A dataframe listing the automatically generated loads and sgens
     to support connecting entities from other simulators directly to
     grid nodes.
-    
+
     The index of this dataframe corresponds to the bus index. The two
     columns "load" and "sgen" contain the index of the corresponding
     load and sgen in the load and sgen element tables.
     """
 
-    _extra_info: Dict[EntityId, Any]
+    _extra_info: dict[EntityId, Any]
     """Storage of the entity's extra_info for use in the
     `get_extra_info` extra_method. This should be removed once
     mosaik 3.3 (or later) is available more widely.
@@ -53,14 +59,16 @@ class Simulator(mosaik_api_v3.Simulator):
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
         self._extra_info = {}
 
-    def init(self, sid: str, time_resolution: float, step_size: Optional[int] = 900):
+    @override
+    def init(self, sid: str, time_resolution: float, step_size: int | None = 900):
         self._sid = sid
         if not step_size:
             self.meta["type"] = "event-based"
         self._step_size = step_size
         return self.meta
 
-    def create(self, num: int, model: str, **model_params: Any) -> List[CreateResult]:
+    @override
+    def create(self, num: int, model: str, **model_params: Any) -> list[CreateResult]:
         if model == "Grid":
             if num != 1:
                 raise ValueError("must create exactly one Grid entity")
@@ -71,8 +79,8 @@ class Simulator(mosaik_api_v3.Simulator):
 
         if model == "ControlledGen":
             return [self.create_controlled_gen(**model_params) for _ in range(num)]
-        else:
-            raise ValueError(f"no entities for the model {model} can be created")
+
+        raise ValueError(f"no entities for the model {model} can be created")
 
     def create_grid(self, **params: Any) -> CreateResult:
         if self._net:
@@ -80,7 +88,7 @@ class Simulator(mosaik_api_v3.Simulator):
 
         self._net, self._profiles = load_grid(params)
 
-        child_entities: List[CreateResult] = []
+        child_entities: list[CreateResult] = []
         for child_model, spec in MODEL_TO_ELEMENT_SPECS.items():
             for elem_tuple in self._net[spec.elem].itertuples():
                 eid = f"{child_model}-{elem_tuple.Index}"
@@ -109,7 +117,7 @@ class Simulator(mosaik_api_v3.Simulator):
             "rel": [],
         }
 
-    def get_extra_info(self) -> Dict[EntityId, Any]:
+    def get_extra_info(self) -> dict[EntityId, Any]:
         return self._extra_info
 
     def create_controlled_gen(self, bus: int) -> CreateResult:
@@ -121,6 +129,7 @@ class Simulator(mosaik_api_v3.Simulator):
             "rel": [f"Bus-{bus}"],
         }
 
+    @override
     def setup_done(self):
         # Create "secret" loads and sgens that are used when the user
         # provides real and reactive power directly to grid nodes.
@@ -134,13 +143,14 @@ class Simulator(mosaik_api_v3.Simulator):
             index=self._net.bus.index,
         )
 
-    def get_model_and_idx(self, eid: str) -> Tuple[str, int]:
+    def get_model_and_idx(self, eid: str) -> tuple[str, int]:
         # TODO: Maybe add a benchmark whether caching this in a dict is
         # faster
         model, idx_str = eid.split("-")
         return (model, int(idx_str))
 
-    def step(self, time, inputs, max_advance):
+    @override
+    def step(self, time: Time, inputs: InputData, max_advance: Time) -> Time | None:
         if self._profiles:
             # TODO: Division by 900 here assumes a time_resolution of 1.
             apply_profiles(self._net, self._profiles, time // 900)
@@ -157,10 +167,13 @@ class Simulator(mosaik_api_v3.Simulator):
         if self._step_size:
             return time + self._step_size
 
+        return None
+
+    @override
     def get_data(self, outputs: OutputRequest) -> OutputData:
         return {eid: self.get_entity_data(eid, attrs) for eid, attrs in outputs.items()}
 
-    def get_entity_data(self, eid: str, attrs: List[str]) -> Dict[str, Any]:
+    def get_entity_data(self, eid: str, attrs: list[str]) -> dict[str, Any]:
         model, idx = self.get_model_and_idx(eid)
         info = MODEL_TO_ELEMENT_SPECS[model]
         elem_table = self._net[f"res_{info.elem}"]
@@ -177,14 +190,14 @@ class InputAttrSpec:
     """The name of the column in the target element's dataframe
     corresponding to this attribute.
     """
-    target_elem: Optional[str] = None
+    target_elem: str | None = None
     """The name of the pandapower element to which this attribute's
     inputs are written. (This might not be the element type
     corresponding to the model to support connecting loads and sgens
     directly to the buses.)
     If ``None``, use the element corresponding to the model.
     """
-    idx_fn: Callable[[int, Simulator], int] = lambda idx, sim: idx  # noqa: E731
+    idx_fn: Callable[[int, Simulator], int] = lambda idx, _sim: idx  # noqa: E731
     """A function to transform the entity ID's index part into the
     index for the target_df.
     """
@@ -203,27 +216,27 @@ class ModelToElementSpec:
     elem: str
     """The name of the pandapower element corresponding to this model.
     """
-    connected_buses: List[str]
+    connected_buses: list[str]
     """The names of the columns specifying the buses to which this
     element is connected.
     """
-    input_attr_specs: Dict[str, InputAttrSpec]
+    input_attr_specs: dict[str, InputAttrSpec]
     """Mapping each input attr to the corresponding column in the
     element's dataframe and an aggregation function.
     """
-    out_attr_to_column: Dict[str, str]
+    out_attr_to_column: dict[str, str]
     """Mapping each output attr to the corresponding column in the
     element's result dataframe.
     """
     createable: bool = False
     """Whether this element can be created by the user."""
-    params: List[str] = field(default_factory=list)
+    params: list[str] = field(default_factory=list)
     """The mosaik params that may be given when creating this element.
     (Only sensible if ``createable=True``.)
     """
-    get_extra_info: Callable[[Any, pp.pandapowerNet], Dict[str, Any]] = (
-        lambda net, idx: {}
-    )  # noqa: E731
+    get_extra_info: Callable[[Any, pp.pandapowerNet], dict[str, Any]] = (  # noqa: E731
+        lambda _net, _idx: {}
+    )
 
 
 MODEL_TO_ELEMENT_SPECS = {
@@ -258,7 +271,7 @@ MODEL_TO_ELEMENT_SPECS = {
             "Vm[pu]": "vm_pu",
             "Va[deg]": "va_degree",
         },
-        get_extra_info=lambda elem_tuple, net: {
+        get_extra_info=lambda elem_tuple, _net: {
             "nominal voltage [kV]": elem_tuple.vn_kv,
         },
     ),
@@ -270,7 +283,7 @@ MODEL_TO_ELEMENT_SPECS = {
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
-        get_extra_info=lambda elem_tuple, net: {
+        get_extra_info=lambda elem_tuple, _net: {
             "profile": elem_tuple.profile,
         }
         if "profile" in elem_tuple._fields
@@ -284,7 +297,7 @@ MODEL_TO_ELEMENT_SPECS = {
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
-        get_extra_info=lambda elem_tuple, net: {
+        get_extra_info=lambda elem_tuple, _net: {
             "profile": elem_tuple.profile,
         }
         if "profile" in elem_tuple._fields
@@ -300,7 +313,7 @@ MODEL_TO_ELEMENT_SPECS = {
             "Va[deg]": "va_degree",
             "Vm[pu]": "vm_pu",
         },
-        get_extra_info=lambda elem_tuple, net: {
+        get_extra_info=lambda elem_tuple, _net: {
             "profile": elem_tuple.profile,
         }
         if "profile" in elem_tuple._fields
@@ -340,7 +353,7 @@ MODEL_TO_ELEMENT_SPECS = {
 
 
 # Generate mosaik model descriptions out of the MODEL_TO_ELEMENT_INFO
-ELEM_META_MODELS: Dict[str, ModelDescription] = {
+ELEM_META_MODELS: dict[str, ModelDescription] = {
     model: {
         "public": info.createable,
         "params": info.params,
@@ -379,7 +392,7 @@ def apply_profiles(net: pp.pandapowerNet, profiles: Any, step: int):
         net[elm].loc[:, param].update(series.loc[step])  # type: ignore
 
 
-def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
+def load_grid(params: dict[str, Any]) -> tuple[pp.pandapowerNet, Any]:
     """Load a grid and the associated element profiles (if any).
 
     :param params: A dictionary describing which grid to load. It should
@@ -401,8 +414,8 @@ def load_grid(params: Dict[str, Any]) -> Tuple[pp.pandapowerNet, Any]:
 
     :raises ValueError: if multiple keys are given in `params`
     """
-    found_sources: Set[str] = set()
-    result: Optional[Tuple[pp.pandapowerNet, Any]] = None
+    found_sources: set[str] = set()
+    result: tuple[pp.pandapowerNet, Any] | None = None
 
     # Accept a pandapower grid
     if net := params.get("net", None):
