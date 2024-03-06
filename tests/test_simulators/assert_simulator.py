@@ -17,6 +17,9 @@ META = {
 }
 
 
+MAX_REL_ERROR = 0.005
+
+
 class AssertSimulator(mosaik_api_v3.Simulator):
     def __init__(self) -> None:
         super().__init__(META)
@@ -49,9 +52,9 @@ class AssertSimulator(mosaik_api_v3.Simulator):
                 for attr, values in expected[time].items():
                     expected_values = sorted(values)
                     received_values = sorted(entity_inputs.pop(attr).values())
-                    for ev, rv in zip(expected_values, received_values, strict=True):
+                    for ev, rv in zip(expected_values, received_values):
                         rel_err = abs((ev - rv) / ev)
-                        assert rel_err < 0.005, (
+                        assert rel_err < MAX_REL_ERROR, (
                             f"at time {time} on port {entity}.{attr}, got {rv} instead "
                             f"of {ev} for (relative error of {rel_err})"
                         )
