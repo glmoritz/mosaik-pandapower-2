@@ -1,4 +1,4 @@
-image: dmanthing/multi-python:latest
+image: python:3.11
 
 stages:
   - test
@@ -7,10 +7,17 @@ stages:
 before_script:
   - pip install hatch
 
-test-job:
+test-3-11-job:
+  image: python:3.11
   stage: test
   script:
-    - hatch run test:test -x
+    - hatch run +py=3.11 test:test -x
+
+test-3-9-job:
+  image: python:3.9
+  stage: test
+  script:
+    - hatch run +py=3.9 test:test -x
 
 release-job:
   script:
