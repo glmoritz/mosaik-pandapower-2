@@ -21,7 +21,7 @@ test-3-9-job:
 
 release-job:
   script:
-    - hatch build -t wheel
+    - hatch build
     - echo $MOSAIK_PYPI_USER
     - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
   stage: release
