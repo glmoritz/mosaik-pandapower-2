@@ -11,7 +11,13 @@ test-3-11-job:
   image: python:3.11
   stage: test
   script:
-    - hatch run +py=3.11 test:test -x
+    - hatch run +py=3.11 test:test --junit-xml=pytest-311.xml
+  artifacts:
+    when: always
+    paths:
+      - pytest-311.xml
+    reports:
+      junit: pytest-311.xml
 
 test-3-9-job:
   image: python:3.9

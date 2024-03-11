@@ -92,8 +92,6 @@ target-version = "py39"
 
 [tool.ruff.format]
 quote-style = "double"
-docstring-code-format = true
-docstring-code-line-length = 72
 
 [tool.ruff.lint]
 ignore = ["TRY", "EM"]  # maybe reconsider
