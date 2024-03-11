@@ -1,7 +1,8 @@
 stages:
   - lint
   - test
-  - release
+  - pypi-release
+  - gitlab-release
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -18,6 +19,10 @@ lint:
   stage: lint
   script:
     - hatch fmt
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
 
 test-3-11-job:
   image: python:3.11
@@ -30,27 +35,48 @@ test-3-11-job:
       - pytest-311.xml
     reports:
       junit: pytest-311.xml
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
 
 test-3-9-job:
   image: python:3.9
   stage: test
   script:
     - hatch run +py=3.9 test:test -x
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - when: always
 
-release-job:
+pypi-release-job:
+  stage: pypi-release
   script:
     - hatch build
     - echo $MOSAIK_PYPI_USER
     - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
-    - export VERSION=$(hatch version)
-  stage: release
+    - echo PACKAGE_VERSION=$(hatch version) > version.env
+  rules:
+    - if: $CI_COMMIT_TAG
+  artifacts:
+    reports:
+      dotenv: version.env
+
+gitlab-release-job:
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  stage: gitlab-release
+  before_script: []
+  script:
+    - echo "Creating GitLab release for $PACKAGE_VERSION"
+  needs:
+    - job: pypi-release-job
+      artifacts: true
   release:
     tag_name: $CI_COMMIT_TAG
     description: $CI_COMMIT_TAG_MESSAGE
     assets:
       links:
         - name: PyPI download page
-          url: https://pypi.org/project/mosaik-pandapower-2/$(hatch version)/#files
+          url: https://pypi.org/project/mosaik-pandapower-2/$PACKAGE_VERSION/#files
           link_type: package
-  rules:
-    - if: $CI_COMMIT_TAG
