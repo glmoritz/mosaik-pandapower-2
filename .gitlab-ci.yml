@@ -42,6 +42,15 @@ release-job:
     - hatch build
     - echo $MOSAIK_PYPI_USER
     - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
+    - export VERSION=$(hatch version)
   stage: release
-  only:
-    - tags
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: $CI_COMMIT_TAG_MESSAGE
+    assets:
+      links:
+        - name: PyPI download page
+          url: https://pypi.org/project/mosaik-pandapower-2/$(hatch version)/#files
+          link_type: package
+  rules:
+    - if: $CI_COMMIT_TAG
