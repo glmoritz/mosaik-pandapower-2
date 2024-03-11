@@ -55,7 +55,3 @@ def test_invalid_grid(world: World):
     with pytest.raises(json.decoder.JSONDecodeError):
         ppsim.Grid(json="tests/data/invalid_grid.json")
     world.shutdown()
-
-
-def test_fail():
-    pytest.fail("For GitLab")

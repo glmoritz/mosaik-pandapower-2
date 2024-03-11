@@ -1,11 +1,23 @@
-image: python:3.11
-
 stages:
+  - lint
   - test
   - release
 
-before_script:
-  - pip install hatch
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+default:
+  image: python:3.11
+  before_script:
+    - pip install hatch
+  cache:
+    paths:
+      - .cache/pip
+
+lint:
+  stage: lint
+  script:
+    - hatch fmt
 
 test-3-11-job:
   image: python:3.11
