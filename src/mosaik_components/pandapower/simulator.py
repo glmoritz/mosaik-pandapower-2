@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import sys
-
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -68,6 +66,7 @@ class Simulator(mosaik_api_v3.Simulator):
             self.meta["type"] = "event-based"
         self._step_size = step_size
         return self.meta
+
     @override
     def create(self, num: int, model: str, **model_params: Any) -> list[CreateResult]:
         if model == "Grid":

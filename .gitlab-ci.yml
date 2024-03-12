@@ -45,7 +45,13 @@ Test on Python 3.9:
   image: python:3.9
   stage: test
   script:
-    - hatch run +py=3.9 test:test -x
+    - hatch run +py=3.9 test:test --junit-xml=pytest-39.xml
+  artifacts:
+    when: always
+    paths:
+      - pytest-39.xml
+    reports:
+      junit: pytest-39.xml
   rules:
     - if: $CI_COMMIT_TAG
       when: never
@@ -81,3 +87,5 @@ Create GitLab release:
         - name: PyPI download page
           url: https://pypi.org/project/mosaik-pandapower-2/$PACKAGE_VERSION/#files
           link_type: package
+  cache:
+    paths: []
