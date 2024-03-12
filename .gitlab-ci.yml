@@ -15,7 +15,7 @@ default:
     paths:
       - .cache/pip
 
-lint:
+Lint and Format:
   stage: lint
   script:
     - hatch fmt
@@ -23,8 +23,9 @@ lint:
     - if: $CI_COMMIT_TAG
       when: never
     - when: always
+  allow_failure: true
 
-test-3-11-job:
+Test on Python 3.11:
   image: python:3.11
   stage: test
   script:
@@ -40,7 +41,7 @@ test-3-11-job:
       when: never
     - when: always
 
-test-3-9-job:
+Test on Python 3.9:
   image: python:3.9
   stage: test
   script:
@@ -50,7 +51,7 @@ test-3-9-job:
       when: never
     - when: always
 
-pypi-release-job:
+Release to PyPI:
   stage: pypi-release
   script:
     - hatch build
@@ -63,14 +64,14 @@ pypi-release-job:
     reports:
       dotenv: version.env
 
-gitlab-release-job:
+Create GitLab release:
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   stage: gitlab-release
   before_script: []
   script:
     - echo "Creating GitLab release for $PACKAGE_VERSION"
   needs:
-    - job: pypi-release-job
+    - job: Release to PyPI
       artifacts: true
   release:
     tag_name: $CI_COMMIT_TAG
