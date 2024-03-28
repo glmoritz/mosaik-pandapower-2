@@ -120,6 +120,9 @@ class Simulator(mosaik_api_v3.Simulator):
     def get_extra_info(self) -> dict[EntityId, Any]:
         return self._extra_info
 
+    def get_net(self) -> pp.pandapowerNet:
+        return self._net
+
     def create_controlled_gen(self, bus: int) -> CreateResult:
         idx = pp.create_gen(self._net, bus, p_mw=0.0)
         return {
@@ -377,7 +380,7 @@ META: Meta = {
         },
         **ELEM_META_MODELS,
     },
-    "extra_methods": ["get_extra_info"],
+    "extra_methods": ["get_extra_info", "get_net"],
 }
 
 
