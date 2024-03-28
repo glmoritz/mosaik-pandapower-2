@@ -181,6 +181,17 @@ attributes of these models, and whether they’re used as inputs or outputs.
 |               | `I[kA]`        | Out    | the current along the line                             |
 |               | `loading[%]`   | Out    | the loading of the line                                |
 
+### Getting the net
+
+The simulator offers a `get_net` extra method which can be called on the simulator object in your mosaik scenario, once you have created the *Grid* entity.
+It will return the internal `pandapowerNet` object for the grid.
+
+**Note**: This method exists purely for visualization and debugging purposes.
+If you change values on this objects, the simulation might crash or the results might be silently incorrect.
+
+**Note**: This method only works if you run the adapter in the same Python process as your scenario (i.e. if you start the simulator using the `"python"` option in your sim config).
+It is not possible to pass the `pandapowerNet` object between processes.
+
 
 ## Development
 
