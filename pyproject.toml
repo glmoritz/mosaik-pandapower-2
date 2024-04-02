@@ -34,11 +34,7 @@ features = [
   "numba",
 ]
 dependencies = [
-  "mosaik ~= 3.2.0",
-]
-
-[tool.hatch.envs.test]
-dependencies = [
+  "mosaik ~= 3.2",
   "pytest ~= 7.3.1",
   "pytest-watch ~= 4.2.0",
   "pyarrow ~= 15.0.0",
@@ -72,17 +68,8 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["tests"]
-addopts = [
-  "--import-mode=importlib"
-]
 filterwarnings = [
-  "ignore:ChainedAssignmentError:FutureWarning",
-  "ignore:Passing literal json:FutureWarning",
-  "ignore:Setting an item:FutureWarning",
-  "ignore:A value is trying:FutureWarning",
-  "ignore:The behavior of DataFrame concatenation:FutureWarning",
-  "ignore:Downcasting object:FutureWarning",
+  "ignore::FutureWarning:simbench",
 ]
 
 [tool.ruff]

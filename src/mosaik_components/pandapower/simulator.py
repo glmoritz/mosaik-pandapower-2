@@ -392,7 +392,7 @@ def apply_profiles(net: pp.pandapowerNet, profiles: Any, step: int):
     :param step: the time step to apply
     """
     for (elm, param), series in profiles.items():
-        net[elm].loc[:, param].update(series.loc[step])  # type: ignore
+        net[elm].update(series.loc[step].rename(param))  # type: ignore
 
 
 def load_grid(params: dict[str, Any]) -> tuple[pp.pandapowerNet, Any]:
