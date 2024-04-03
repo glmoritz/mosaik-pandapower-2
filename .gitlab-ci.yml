@@ -61,7 +61,7 @@ Test/Python 3.9:
   script:
     - hatch build
     - hatch publish -u $MOSAIK_PYPI_USER -a $PYPI_TOKEN -r $REPO |& tee hatch.out
-    - PACKAGE_URL = $(tail -n 1 hatch.out)
+    - PACKAGE_URL=$(tail -n 1 hatch.out)
     - touch pypi.env
     - echo "PACKAGE_VERSION=$(hatch version)" >> pypi.env
     - echo "PACKAGE_URL=$PACKAGE_URL" >> pypi.env
