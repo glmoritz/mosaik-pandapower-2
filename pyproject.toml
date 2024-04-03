@@ -69,6 +69,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 filterwarnings = [
+  "error",
   "ignore::FutureWarning:simbench",
 ]
 

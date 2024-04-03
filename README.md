@@ -181,6 +181,7 @@ attributes of these models, and whether they’re used as inputs or outputs.
 |               | `I[kA]`        | Out    | the current along the line                             |
 |               | `loading[%]`   | Out    | the loading of the line                                |
 
+
 ### Getting the net
 
 The simulator offers a `get_net` extra method which can be called on the simulator object in your mosaik scenario, once you have created the *Grid* entity.
@@ -191,6 +192,21 @@ If you change values on this objects, the simulation might crash or the results 
 
 **Note**: This method only works if you run the adapter in the same Python process as your scenario (i.e. if you start the simulator using the `"python"` option in your sim config).
 It is not possible to pass the `pandapowerNet` object between processes.
+
+
+### Disabling existing elements
+
+This simulator purposefully does not allow you to overwrite the values of loads and other elements that already exist in the grid.
+However, you may switch them off entirely.
+For this, use the `disable_elements` extra method.
+If `loads` is a list of *Load* entities that you want to disable, you can achieve this via
+
+```python
+pp_sim.disable_elements([load.eid for load in loads])
+```
+
+This works by setting the element's *in_service* value to `False`.
+You can undo this (or enable elements that are not in service in your grid file) by using the analogous `enable_elements` extra method.
 
 
 ## Development

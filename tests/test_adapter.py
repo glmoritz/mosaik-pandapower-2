@@ -35,7 +35,26 @@ def test_scenario(world: World):
 
 def test_scenario_simbench(world: World):
     ppsim = world.start("Grid")
-    ppsim.Grid(simbench="1-MVLV-semiurb-5.220-1-no_sw")
+    grid = ppsim.Grid(simbench="1-MVLV-semiurb-5.220-1-no_sw")
+    extra_info = ppsim.get_extra_info()
+    asserter = world.start("Asserter").Entity(
+        expected={
+            0: {
+                "load": [0],
+                "bus": [-1.486891509],
+            },
+        },
+    )
+    load = next(e for e in grid.children if e.type == "Load")
+    load_bus_index = extra_info[load.eid]["bus"]
+    bus = next(
+        e
+        for e in grid.children
+        if e.type == "Bus" and extra_info[e.eid]["index"] == load_bus_index
+    )
+    world.connect(load, asserter, ("P[MW]", "load"))
+    world.connect(bus, asserter, ("P[MW]", "bus"))
+    ppsim.disable_elements([load.eid])
     world.run(until=1)
 
 

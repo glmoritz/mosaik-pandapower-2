@@ -53,11 +53,17 @@ class AssertSimulator(mosaik_api_v3.Simulator):
                     expected_values = sorted(values)
                     received_values = sorted(entity_inputs.pop(attr).values())
                     for ev, rv in zip(expected_values, received_values):
-                        rel_err = abs((ev - rv) / ev)
-                        assert rel_err < MAX_REL_ERROR, (
-                            f"at time {time} on port {entity}.{attr}, got {rv} instead "
-                            f"of {ev} for (relative error of {rel_err})"
-                        )
+                        if ev != 0:
+                            rel_err = abs((ev - rv) / ev)
+                            assert rel_err < MAX_REL_ERROR, (
+                                f"at time {time} on port {entity}.{attr}, got {rv} "
+                                f"instead of {ev} for (relative error of {rel_err})"
+                            )
+                        else:
+                            assert rv == 0, (
+                                f"at time {time} on port {entity}.{attr}, got {rv} "
+                                "instead of 0"
+                            )
                 assert entity_inputs == {}, (
                     f"remaining entity inputs for entity {entity} at time {time}: "
                     f"{entity_inputs}"
