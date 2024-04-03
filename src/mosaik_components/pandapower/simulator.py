@@ -323,11 +323,11 @@ MODEL_TO_ELEMENT_SPECS = {
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
-        get_extra_info=lambda elem_tuple, _net: {
-            "profile": elem_tuple.profile,
-        }
-        if "profile" in elem_tuple._fields
-        else {},
+        get_extra_info=lambda elem, _net: {
+            "bus": elem.bus,
+            **({"profile": elem.profile} if "profile" in elem._fields else {}),
+        },
+        can_switch_off=True,
     ),
     "Gen": ModelToElementSpec(
         elem="gen",
@@ -339,11 +339,11 @@ MODEL_TO_ELEMENT_SPECS = {
             "Va[deg]": "va_degree",
             "Vm[pu]": "vm_pu",
         },
-        get_extra_info=lambda elem_tuple, _net: {
-            "profile": elem_tuple.profile,
-        }
-        if "profile" in elem_tuple._fields
-        else {},
+        get_extra_info=lambda elem, _net: {
+            "bus": elem.bus,
+            **({"profile": elem.profile} if "profile" in elem._fields else {}),
+        },
+        can_switch_off=True,
     ),
     "ExternalGrid": ModelToElementSpec(
         elem="ext_grid",
