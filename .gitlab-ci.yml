@@ -1,10 +1,12 @@
-stages:
-  - test
-  - pypi-release
-  - gitlab-release
-
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  test_release_pattern: /dev/
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_REF_PROTECTED == "true"
 
 default:
   image: python:3.11
@@ -15,7 +17,6 @@ default:
       - .cache/pip
 
 Lint and Format:
-  stage: test
   script:
     - hatch fmt --check
   rules:
@@ -23,25 +24,26 @@ Lint and Format:
       when: never
     - when: always
 
-Test on Python 3.11:
+Test/Python 3.11:
   image: python:3.11
-  stage: test
   script:
-    - hatch run +py=3.11 test:test --junit-xml=pytest-311.xml
+    - hatch run +py=3.11 test:test --junit-xml=pytest-311.xml --cov --cov-report xml
   artifacts:
     when: always
     paths:
       - pytest-311.xml
     reports:
       junit: pytest-311.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
   rules:
     - if: $CI_COMMIT_TAG
       when: never
     - when: always
 
-Test on Python 3.9:
+Test/Python 3.9:
   image: python:3.9
-  stage: test
   script:
     - hatch run +py=3.9 test:test --junit-xml=pytest-39.xml
   artifacts:
@@ -55,33 +57,47 @@ Test on Python 3.9:
       when: never
     - when: always
 
-Release to PyPI:
-  stage: pypi-release
+.release:
   script:
     - hatch build
-    - echo $MOSAIK_PYPI_USER
-    - hatch publish -u $MOSAIK_PYPI_USER -a $MOSAIK_PYPI_PASSWORD
-    - echo PACKAGE_VERSION=$(hatch version) > version.env
-  rules:
-    - if: $CI_COMMIT_TAG
+    - hatch publish -u $MOSAIK_PYPI_USER -a $PYPI_TOKEN -r $REPO |& tee hatch.out
+    - PACKAGE_URL = $(tail -n 1 hatch.out)
+    - touch pypi.env
+    - echo "PACKAGE_VERSION=$(hatch version)" >> pypi.env
+    - echo "PACKAGE_URL=$PACKAGE_URL" >> pypi.env
   artifacts:
     reports:
-      dotenv: version.env
+      dotenv: pypi.env
   cache:
     paths:
       - .cache/pip
     policy: pull
 
-Create GitLab release:
-  image: registry.gitlab.com/gitlab-org/release-cli:latest
-  stage: gitlab-release
+PyPI release:
+  extends: .release
   rules:
-    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG !~ $test_release_pattern
+  variables:
+    PYPI_TOKEN: $MOSAIK_PYPI_PASSWORD
+    REPO: main
+
+Test-PyPI release:
+  extends: .release
+  rules:
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG =~ $test_release_pattern
+  variables:
+    PYPI_TOKEN: $MOSAIK_TEST_PYPI_TOKEN
+    REPO: test
+
+GitLab release:
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG !~ $test_release_pattern
   before_script: []
   script:
     - echo "Creating GitLab release for $PACKAGE_VERSION"
   needs:
-    - job: Release to PyPI
+    - job: PyPI release
       artifacts: true
   release:
     tag_name: $CI_COMMIT_TAG
@@ -89,7 +105,7 @@ Create GitLab release:
     assets:
       links:
         - name: PyPI download page
-          url: https://pypi.org/project/mosaik-pandapower-2/$PACKAGE_VERSION/#files
+          url: $PACKAGE_URL#files
           link_type: package
   cache:
     paths: []
