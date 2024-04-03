@@ -123,6 +123,22 @@ class Simulator(mosaik_api_v3.Simulator):
     def get_net(self) -> pp.pandapowerNet:
         return self._net
 
+    def disable_elements(self, elements: list[str]) -> None:
+        for eid in elements:
+            model, idx = self.get_model_and_idx(eid)
+            elem_spec = MODEL_TO_ELEMENT_SPECS[model]
+            if not elem_spec.can_switch_off:
+                raise ValueError(f"{model} elements cannot be disabled")
+            self._net[elem_spec.elem].loc[idx, "in_service"] = False
+
+    def enable_elements(self, elements: list[str]) -> None:
+        for eid in elements:
+            model, idx = self.get_model_and_idx(eid)
+            elem_spec = MODEL_TO_ELEMENT_SPECS[model]
+            if not elem_spec.can_switch_off:
+                raise ValueError(f"{model} elements cannot be enabled")
+            self._net[elem_spec.elem].loc[idx, "in_service"] = True
+
     def create_controlled_gen(self, bus: int) -> CreateResult:
         idx = pp.create_gen(self._net, bus, p_mw=0.0)
         return {
@@ -240,6 +256,13 @@ class ModelToElementSpec:
     get_extra_info: Callable[[Any, pp.pandapowerNet], dict[str, Any]] = (  # noqa: E731
         lambda _net, _idx: {}
     )
+    """Function returning the extra info for this type of element given
+    the net and the element's index.
+    """
+    can_switch_off: bool = False
+    """Whether elements of this type may be switched off (and on) using
+    the *disable_element* (*enable_element*) extra methods.
+    """
 
 
 MODEL_TO_ELEMENT_SPECS = {
@@ -286,11 +309,11 @@ MODEL_TO_ELEMENT_SPECS = {
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
         },
-        get_extra_info=lambda elem_tuple, _net: {
-            "profile": elem_tuple.profile,
-        }
-        if "profile" in elem_tuple._fields
-        else {},
+        get_extra_info=lambda elem, _net: {
+            "bus": elem.bus,
+            **({"profile": elem.profile} if "profile" in elem._fields else {}),
+        },
+        can_switch_off=True,
     ),
     "StaticGen": ModelToElementSpec(
         elem="sgen",
@@ -380,7 +403,12 @@ META: Meta = {
         },
         **ELEM_META_MODELS,
     },
-    "extra_methods": ["get_extra_info", "get_net"],
+    "extra_methods": [
+        "get_extra_info",
+        "get_net",
+        "disable_elements",
+        "enable_elements",
+    ],
 }
 
 
