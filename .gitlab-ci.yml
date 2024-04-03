@@ -27,7 +27,7 @@ Lint and Format:
 Test/Python 3.11:
   image: python:3.11
   script:
-    - hatch run +py=3.11 test:test --junit-xml=pytest-311.xml --cov --cov-report xml
+    - hatch run +py=3.11 test:test --junit-xml=pytest-311.xml --cov --cov-report xml --cov-report term
   artifacts:
     when: always
     paths:
@@ -41,6 +41,7 @@ Test/Python 3.11:
     - if: $CI_COMMIT_TAG
       when: never
     - when: always
+  coverage: /TOTAL.*%/
 
 Test/Python 3.9:
   image: python:3.9
