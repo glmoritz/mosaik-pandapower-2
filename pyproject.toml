@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
   "mosaik-api-v3 ~= 3.0.4",
-  "loguru ~= 0.7.2",
+  "loguru ~= 0.6",
   "pandapower ~= 2.14",
 ]
 dynamic = ["version"]
