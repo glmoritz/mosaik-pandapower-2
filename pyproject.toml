@@ -10,7 +10,7 @@ dynamic = ["version"]
 
 [project.optional-dependencies]
 simbench = ["simbench ~= 1.4.0"]
-numba = ["numba ~= 0.58.1"]
+numba = ["numba >= 0.58.1"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mosaik_components"]
@@ -64,4 +64,9 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = ["mosaik>=3.5.0", "pytest>=8.3.5", "pytest-cov>=6.1.0"]
+dev = [
+    "mosaik>=3.5.0",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.0",
+    "mosaik-pandapower-2[all]",
+]
