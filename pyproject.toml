@@ -4,13 +4,13 @@ description = "An adapter to connect mosaik to pandapower"
 authors = [{ name = "Eike Schulte", email = "eike.schulte@offis.de" }]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = ["mosaik-api-v3 ~= 3.0.4", "loguru ~= 0.6", "pandapower ~= 2.14"]
 dynamic = ["version"]
 
 [project.optional-dependencies]
 simbench = ["simbench ~= 1.4.0"]
-numba = ["numba >= 0.58.1"]
+numba = ["numba >= 0.61.0"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mosaik_components"]
@@ -27,7 +27,11 @@ dependencies = [
 ]
 
 [tool.pytest.ini_options]
-filterwarnings = ["error", "ignore::FutureWarning:simbench"]
+filterwarnings = [
+    "error",
+    "ignore::FutureWarning:simbench",
+    "ignore::SyntaxWarning",
+]
 
 [tool.coverage.run]
 omit = ["tests/**"]
@@ -68,5 +72,5 @@ dev = [
     "mosaik>=3.5.0",
     "pytest>=8.3.5",
     "pytest-cov>=6.1.0",
-    "mosaik-pandapower-2[all]",
+    "mosaik-pandapower-2[simbench,numba]",
 ]

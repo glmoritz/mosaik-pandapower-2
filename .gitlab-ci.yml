@@ -5,4 +5,4 @@ include:
       package: mosaik-pandapower-2
       main_branch: main
       typecheck: always
-      test_pythons: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+      test_pythons: ["3.10", "3.11", "3.12", "3.13"]
