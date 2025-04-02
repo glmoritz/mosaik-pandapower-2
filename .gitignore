@@ -3,3 +3,4 @@ dist
 .coverage
 coverage.xml
 pytest-*.xml
+uv.lock
