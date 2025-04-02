@@ -7,15 +7,14 @@ from mosaik import World
 
 @pytest.fixture
 def world():
-    world = World(
+    with World(
         {
             "Grid": {"python": "mosaik_components.pandapower:Simulator"},
             "Asserter": {"python": "test_simulators.assert_simulator:AssertSimulator"},
             "Const": {"python": "test_simulators.const_simulator:ConstSimulator"},
         }
-    )
-    yield world
-    world.shutdown()
+    ) as world:
+        yield world
 
 
 def test_scenario(world: World):
@@ -74,11 +73,9 @@ def test_inexistent_file(world: World):
     ppsim = world.start("Grid")
     with pytest.raises(UserWarning):
         ppsim.Grid(json="does_not_exist.json")
-    world.shutdown()
 
 
 def test_invalid_grid(world: World):
     ppsim = world.start("Grid")
     with pytest.raises(json.decoder.JSONDecodeError):
         ppsim.Grid(json="tests/data/invalid_grid.json")
-    world.shutdown()
