@@ -25,9 +25,10 @@ packages = ["src/mosaik_components"]
 
 [tool.pytest.ini_options]
 filterwarnings = [
-    "error",
+    "error:^(?!invalid escape sequence).+",
     "ignore::FutureWarning:simbench",
     "ignore::SyntaxWarning",
+    "ignore::DeprecationWarning:docopt",
 ]
 
 [tool.coverage.run]
