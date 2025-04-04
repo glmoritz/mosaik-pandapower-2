@@ -218,17 +218,19 @@ You can undo this (or enable elements that are not in service in your grid file)
 
 For the development of this simulator, the following tools are employed:
 
--   [Hatch](https://hatch.pypa.io/latest/) is used as a packaging manager.
-    This offers the following commands:
+-   [uv](https://astral.sh/uv) is used as a packaging manager.
+    In short, after installing it, you can set up this repository's virtual environment using `uv sync`.
 
-    -   `hatch fmt` to format the code (using ruff)
-    -   `hatch run test:test` to run pytest in a test matrix consisting of Python versions 3.9 and 3.11 and mosaik versions 3.2 and 3.3.0b1.
-    -   `hatch run python` for running Python.
-    -   `hatch run` to run arbitrary commands in the managed virtualenv.
+    Important commands:
+
+    -   `uv run pytest` to run pytest.
+    -   `uv run python` for running Python.
+    -   `uv run` to run arbitrary commands in the managed virtualenv.
+    -   `uvx ruff format` to format the code (using ruff)
 
     Also, we use `hatch-vcs` to automatically deduce version numbers from git tags.
     Adding a new tag starting with v on the main branch should automatically release this on PyPI.
 
 
 -   [pre-commit](https://pre-commit.com/) is used to run hooks before committing and pushing.
-    Install pre-commit (I recommend `pipx`) and install the hooks using `pre-commit install`.
+    Install pre-commit (I recommend `uvx`) and install the hooks using `uvx pre-commit install`.
