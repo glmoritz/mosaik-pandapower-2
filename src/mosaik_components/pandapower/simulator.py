@@ -230,6 +230,11 @@ class InputAttrSpec:
 class ModelToElementSpec:
     """Specification of the pandapower element that is represented by
     a (mosaik) model of this simulator.
+
+    Specifications of this type are collected in the
+    ``MODEL_TO_ELEMENT_SPECS`` dict, with the model name serving as the
+    key. This dict is then used to both create the ``META`` for the
+    ``init`` method and the grid's children during ``create``.
     """
 
     elem: str
@@ -254,14 +259,14 @@ class ModelToElementSpec:
     (Only sensible if ``createable=True``.)
     """
     get_extra_info: Callable[[Any, pp.pandapowerNet], dict[str, Any]] = (  # noqa: E731
-        lambda _net, _idx: {}
+        lambda elem_tuple, net: {}
     )
-    """Function returning the extra info for this type of element given
-    the net and the element's index.
+    """Function returning the extra info for this type of element tuple
+    and the entire net.
     """
     can_switch_off: bool = False
     """Whether elements of this type may be switched off (and on) using
-    the *disable_element* (*enable_element*) extra methods.
+    the ``disable_element`` (``enable_element``) extra methods.
     """
 
 

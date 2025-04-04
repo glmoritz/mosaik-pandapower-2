@@ -107,11 +107,16 @@ The entity IDs of the children follow the format `ElementType-Index` where
 `ElementType` is the same as the `type` and `Index` is the element's index
 in the element's table in the `pandapowerNet` object.
 
-If you are using mosaik 3.3 or later, each entity will also have an `extra_info`
-field holding a dict with additional information about this entity. This will
-always include the entity's index (so you don't need to parse its entity ID) and
-its name in the pandapower grid. Depending on the element, other information is
-included as well. If you are missing a field, feel free to leave an issue.
+If you are using mosaik 3.3 or later, you can access additional information about each entity via
+
+```python
+entity.extra_info
+```
+
+This holds a dict comprising fields depending on the entity's type.
+It will always include the entity's index and its name in the pandapower grid (under the keys *index* and *name*, respectively).
+Depending on the element, other information is included as well.
+If you are missing a field, feel free to leave an issue on this repository; additional fields are usually quite quick to add.
 
 Earlier versions of mosaik do not support `extra_info` in this way. To still
 enable you to access it, the simulator has a `get_extra_info` extra method,
