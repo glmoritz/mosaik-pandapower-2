@@ -58,13 +58,15 @@ class Simulator(mosaik_api_v3.Simulator):
         self._net = None  # type: ignore  # set in init()
         self.bus_auto_elements = None  # type: ignore  # set in setup_done()
         self._extra_info = {}
+        self.asymmetric_flow = False
 
     @override
-    def init(self, sid: str, time_resolution: float, step_size: int | None = 900):
+    def init(self, sid: str, time_resolution: float, step_size: int | None = 900, asymmetric_flow: bool = False, **sim_params: Any) -> Meta:
         self._sid = sid
         if not step_size:
             self.meta["type"] = "event-based"
         self._step_size = step_size
+        self.asymmetric_flow = asymmetric_flow
         return self.meta
 
     @override
@@ -154,10 +156,22 @@ class Simulator(mosaik_api_v3.Simulator):
         # provides real and reactive power directly to grid nodes.
         load_indices = pp.create_loads(self._net, self._net.bus.index, 0.0)
         sgen_indices = pp.create_sgens(self._net, self._net.bus.index, 0.0)
+        
+        asymmetric_sgen_indices = [
+            pp.create_asymmetric_sgen(self._net, bus, p_a_mw=0.0, p_b_mw=0.0, p_c_mw=0.0)
+            for bus in self._net.bus.index
+        ]
+        asymmetric_load_indices = [
+            pp.create_asymmetric_load(self._net, bus, p_a_mw=0.0, p_b_mw=0.0, p_c_mw=0.0)
+            for bus in self._net.bus.index
+        ]
+        
         self.bus_auto_elements = pd.DataFrame(
             {
                 "load": load_indices,
                 "sgen": sgen_indices,
+                "asymmetric_load": asymmetric_load_indices,
+                "asymmetric_sgen": asymmetric_sgen_indices,
             },
             index=self._net.bus.index,
         )
@@ -182,7 +196,11 @@ class Simulator(mosaik_api_v3.Simulator):
                     attr_spec.idx_fn(idx, self), attr_spec.column
                 ] = attr_spec.aggregator(values.values())
 
-        pp.runpp(self._net)
+        if self.asymmetric_flow:
+            pp.runpp_3ph(self._net)
+        else:
+            pp.runpp(self._net)
+
         if self._step_size:
             return time + self._step_size
 
@@ -195,7 +213,10 @@ class Simulator(mosaik_api_v3.Simulator):
     def get_entity_data(self, eid: str, attrs: list[str]) -> dict[str, Any]:
         model, idx = self.get_model_and_idx(eid)
         info = MODEL_TO_ELEMENT_SPECS[model]
-        elem_table = self._net[f"res_{info.elem}"]
+        table_name = f"res_{info.elem}"
+        if self.asymmetric_flow:
+            table_name = table_name + "_3ph"        
+        elem_table = self._net[table_name]
         return {
             attr: elem_table.at[idx, info.out_attr_to_column[attr]] for attr in attrs
         }
@@ -295,16 +316,107 @@ MODEL_TO_ELEMENT_SPECS = {
                 target_elem="load",
                 idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "load"],
             ),
+            "P_a_gen[MW]": InputAttrSpec(
+                column="p_a_mw",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "P_b_gen[MW]": InputAttrSpec(
+                column="p_b_mw",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "P_c_gen[MW]": InputAttrSpec(
+                column="p_c_mw",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "P_a_load[MW]": InputAttrSpec(
+                column="p_a_mw",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
+            "P_b_load[MW]": InputAttrSpec(
+                column="p_b_mw",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
+            "P_c_load[MW]": InputAttrSpec(
+                column="p_c_mw",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
+            "Q_a_gen[MVar]": InputAttrSpec(
+                column="q_a_mvar",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "Q_b_gen[MVar]": InputAttrSpec(
+                column="q_b_mvar",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "Q_c_gen[MVar]": InputAttrSpec(
+                column="q_c_mvar",
+                target_elem="asymmetric_sgen",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_sgen"],
+            ),
+            "Q_a_load[MVar]": InputAttrSpec(
+                column="q_a_mvar",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
+            "Q_b_load[MVar]": InputAttrSpec(
+                column="q_b_mvar",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
+            "Q_c_load[MVar]": InputAttrSpec(
+                column="q_c_mvar",
+                target_elem="asymmetric_load",
+                idx_fn=lambda idx, sim: sim.bus_auto_elements.at[idx, "asymmetric_load"],
+            ),
         },
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
             "Vm[pu]": "vm_pu",
             "Va[deg]": "va_degree",
+            "Vm_a[pu]": "vm_a_pu",
+            "Va_a[deg]": "va_a_degree",
+            "Vm_b[pu]": "vm_b_pu",
+            "Va_b[deg]": "va_b_degree",
+            "Vm_c[pu]": "vm_c_pu",
+            "Va_c[deg]": "va_c_degree",
+            "P_a[MW]": "p_a_mw",
+            "Q_a[MVar]": "q_a_mvar",
+            "P_b[MW]": "p_b_mw",
+            "Q_b[MVar]": "q_b_mvar",
+            "P_c[MW]": "p_c_mw",
+            "Q_c[MVar]": "q_c_mvar",
+            "Unbalance[%]": "unbalance_percent",
         },
         get_extra_info=lambda elem_tuple, _net: {
             "nominal voltage [kV]": elem_tuple.vn_kv,
         },
+    ),
+    "AsymmetricLoad": ModelToElementSpec(
+        elem="asymmetric_load",
+        connected_buses=["bus"],
+        input_attr_specs={},
+        out_attr_to_column={
+            "P_a[MW]": "p_a_mw",
+            "Q_a[MVar]": "q_a_mvar",
+            "P_b[MW]": "p_b_mw",
+            "Q_b[MVar]": "q_b_mvar",
+            "P_c[MW]": "p_c_mw",
+            "Q_c[MVar]": "q_c_mvar"
+        },
+        get_extra_info=lambda elem, _net: {
+            "bus": elem.bus,
+            **({"profile": elem.profile} if "profile" in elem._fields else {}),
+        },
+        can_switch_off=True,
     ),
     "Load": ModelToElementSpec(
         elem="load",
@@ -327,6 +439,24 @@ MODEL_TO_ELEMENT_SPECS = {
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
+        },
+        get_extra_info=lambda elem, _net: {
+            "bus": elem.bus,
+            **({"profile": elem.profile} if "profile" in elem._fields else {}),
+        },
+        can_switch_off=True,
+    ),
+    "AsymmetricStaticGen": ModelToElementSpec(
+        elem="asymmetric_sgen",
+        connected_buses=["bus"],
+        input_attr_specs={},
+        out_attr_to_column={
+            "P_a[MW]": "p_a_mw",
+            "Q_a[MVar]": "q_a_mvar",
+            "P_b[MW]": "p_b_mw",
+            "Q_b[MVar]": "q_b_mvar",
+            "P_c[MW]": "p_c_mw",
+            "Q_c[MVar]": "q_c_mvar",
         },
         get_extra_info=lambda elem, _net: {
             "bus": elem.bus,
@@ -357,6 +487,56 @@ MODEL_TO_ELEMENT_SPECS = {
         out_attr_to_column={
             "P[MW]": "p_mw",
             "Q[MVar]": "q_mvar",
+            "P_a[MW]": "p_a_mw",
+            "Q_a[MVar]": "q_a_mvar",
+            "P_b[MW]": "p_b_mw",
+            "Q_b[MVar]": "q_b_mvar",
+            "P_c[MW]": "p_c_mw",
+            "Q_c[MVar]": "q_c_mvar",
+        },
+    ),
+    "Transformer": ModelToElementSpec(
+        elem="trafo",
+        connected_buses=["hv_bus", "lv_bus"],
+        input_attr_specs={},
+        out_attr_to_column={
+            "P_hv[MW]": "p_hv_mw",
+            "Q_hv[MVar]": "q_hv_mvar",
+            "P_lv[MW]": "p_lv_mw",
+            "Q_lv[MVar]": "q_lv_mvar",
+            "Pl[MW]": "pl_mw",
+            "Ql[MVar]": "ql_mvar",
+            "I_hv[kA]": "i_hv_ka",
+            "I_lv[kA]": "i_lv_ka",
+            "Vm_hv[pu]": "vm_hv_pu",
+            "Vm_lv[pu]": "vm_lv_pu",
+            "Va_hv[degree]": "va_hv_degree",
+            "Va_lv[degree]": "va_lv_degree",    
+            "P_a_hv[MW]": "p_a_hv_mw",
+            "Q_a_hv[MVar]": "q_a_hv_mvar",
+            "P_b_hv[MW]": "p_b_hv_mw",
+            "Q_b_hv[MVar]": "q_b_hv_mvar",
+            "P_c_hv[MW]": "p_c_hv_mw",
+            "Q_c_hv[MVar]": "q_c_hv_mvar",
+            "P_a_lv[MW]": "p_a_lv_mw",
+            "Q_a_lv[MVar]": "q_a_lv_mvar",
+            "P_b_lv[MW]": "p_b_lv_mw",
+            "Q_b_lv[MVar]": "q_b_lv_mvar",
+            "P_c_lv[MW]": "p_c_lv_mw",
+            "Q_c_lv[MVar]": "q_c_lv_mvar",
+            "Pl_a[MW]": "pl_a_mw",
+            "Ql_a[MVar]": "ql_a_mvar",
+            "Pl_b[MW]": "pl_b_mw",
+            "Ql_b[MVar]": "ql_b_mvar",
+            "Pl_c[MW]": "pl_c_mw",
+            "Ql_c[MVar]": "ql_c_mvar",
+            "I_a_hv[kA]": "i_a_hv_ka",
+            "I_a_lv[kA]": "i_a_lv_ka",
+            "I_b_hv[kA]": "i_b_hv_ka",
+            "I_b_lv[kA]": "i_b_lv_ka",
+            "I_c_hv[kA]": "i_c_hv_ka",
+            "I_c_lv[kA]": "i_c_lv_ka",
+            "Loading[%]": "loading_percent",
         },
     ),
     "ControlledGen": ModelToElementSpec(
@@ -376,8 +556,56 @@ MODEL_TO_ELEMENT_SPECS = {
         connected_buses=["from_bus", "to_bus"],
         input_attr_specs={},
         out_attr_to_column={
+            # Active power flows
+            "P_from[MW]": "p_from_mw",
+            "P_to[MW]": "p_to_mw",
+            
+            # Reactive power flows
+            "Q_from[MVar]": "q_from_mvar",
+            "Q_to[MVar]": "q_to_mvar",
+            
+            # Line losses
+            "Pl_a[MW]": "p_a_l_mw",
+            "Ql_a[MVar]": "q_a_l_mvar",
+            "Pl_b[MW]": "p_b_l_mw",
+            "Ql_b[MVar]": "q_b_l_mvar",
+            "Pl_c[MW]": "p_c_l_mw",
+            "Ql_c[MVar]": "q_c_l_mvar",
+            
+            # Current measurements
+            "I_from[kA]": "i_from_ka",
+            "I_to[kA]": "i_to_ka",
             "I[kA]": "i_ka",
-            "loading[%]": "loading_percent",
+            
+            # Voltage magnitudes
+            "Vm_from[pu]": "vm_from_pu",
+            "Vm_to[pu]": "vm_to_pu",
+            
+            # Voltage angles
+            "Va_from[deg]": "va_from_degree",
+            "Va_to[deg]": "va_to_degree",
+            
+            "P_a_from[MW]": "p_a_from_mw",
+            "Q_a_from[MVar]": "q_a_from_mvar",
+            "P_b_from[MW]": "p_b_from_mw",
+            "Q_b_from[MVar]": "q_b_from_mvar",
+            "P_c_from[MW]": "p_c_from_mw",
+            "Q_c_from[MVar]": "q_c_from_mvar",            
+            "P_a_to[MW]": "p_a_to_mw",
+            "Q_a_to[MVar]": "q_a_to_mvar",
+            "P_b_to[MW]": "p_b_to_mw",
+            "Q_b_to[MVar]": "q_b_to_mvar",
+            "P_c_to[MW]": "p_c_to_mw",
+            "Q_c_to[MVar]": "q_c_to_mvar",            
+            "I_a_from[kA]": "i_a_from_ka",
+            "I_b_from[kA]": "i_b_from_ka",
+            "I_c_from[kA]": "i_c_from_ka",
+            "I_n_from[kA]": "i_n_from_ka",
+            "I_a_to[kA]": "i_a_to_ka",
+            "I_b_to[kA]": "i_b_to_ka",
+            "I_c_to[kA]": "i_c_to_ka",
+            "I_n_to[kA]": "i_n_to_ka",
+            "Loading[%]": "loading_percent",
         },
     ),
 }
